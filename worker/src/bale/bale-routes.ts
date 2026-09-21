@@ -115,6 +115,21 @@ baleRoutes.post('/orders', async (c) => {
   try {
     const bale = new BaleDB(db);
     const order = await bale.createOrder(userId, body);
+    const items = await bale.listOrderItems(order.id);
+    const user = await bale.getUser(userId);
+    const notifyToken = c.env.BALE_ORDER_BOT_TOKEN;
+    if (notifyToken) {
+      const lines = items.map((it, i) => `${i + 1}. ${it.product_name ?? 'محصول'}${it.color_name ? ` - ${it.color_name}` : ''}${it.size_dimensions ? ` - ${it.size_dimensions}` : ''} ×${it.quantity}`);
+      const text = [`🛍️ سفارش جدید #${order.id}`, '', `👤 ${user?.first_name ?? ''} ${user?.last_name ?? ''}`, user?.username ? `@${user.username}` : null, user?.phone ? `📞 ${user.phone}` : null, '', ...lines, '', `📦 ${body.delivery_method ?? '-'}`].filter((x) => x !== null).join('\n');
+      const adminIds = (c.env.BALE_ADMIN_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+      await Promise.all(adminIds.map((chatId) =>
+        fetch(`https://tapi.bale.ai/bot${notifyToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text }),
+        }).catch(() => null)
+      ));
+    }
     return c.json({ order }, 201);
   } catch (e) {
     return c.json({ error: e instanceof Error ? e.message : 'Order failed' }, 400);

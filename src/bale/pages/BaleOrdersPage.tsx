@@ -1,5 +1,6 @@
 import { useEffect, useState, type FC } from 'react';
 import { baleGetMyOrders, type BaleOrder } from '../bale-client';
+import './BaleOrdersPage.css';
 
 export const BaleOrdersPage: FC = () => {
   const [orders, setOrders] = useState<BaleOrder[]>([]);
@@ -10,27 +11,34 @@ export const BaleOrdersPage: FC = () => {
   }, []);
 
   return (
-    <div style={{ padding: '16px', direction: 'rtl', fontFamily: 'Vazirmatn, sans-serif' }}>
-      <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 16px' }}>سفارش‌های من</h2>
-      {loading && <p style={{ textAlign: 'center', color: '#6B7280' }}>در حال بارگذاری...</p>}
-      {!loading && orders.length === 0 && <p style={{ textAlign: 'center', color: '#6B7280' }}>سفارشی ثبت نشده است</p>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {orders.map((o) => (
-          <div key={o.id} style={{ border: '1px solid #E5E7EB', borderRadius: '16px', padding: '12px', background: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 600 }}>سفارش #{o.id}</span>
-              <span style={{ fontSize: '13px', color: o.payment_status === 'paid' ? '#22C55E' : '#F59E0B' }}>
-                {o.payment_status === 'paid' ? 'پرداخت شده' : 'در انتظار پرداخت'}
-              </span>
-            </div>
-            {(o.items ?? []).map((it, i) => (
-              <div key={i} style={{ fontSize: '13px', color: '#4B5563', padding: '4px 0' }}>
-                {it.product_name ?? 'محصول'}{it.color_name ? ` — ${it.color_name}` : ''}{it.size_dimensions ? ` — ${it.size_dimensions}` : ''} ×{it.quantity}
+    <main className="bale-orders">
+      <h1>سفارش‌های من</h1>
+      {loading && <p className="bale-orders-empty">در حال دریافت سفارش‌ها...</p>}
+      {!loading && orders.length === 0 && <p className="bale-orders-empty">هنوز سفارشی ثبت نکرده‌اید.</p>}
+      {!loading && orders.length > 0 && (
+        <div className="bale-orders-list">
+          {orders.map((o) => (
+            <div key={o.id} className="bale-order-card">
+              <div className="bale-order-header">
+                <strong>سفارش #{o.id}</strong>
+                <span className={`bale-order-status ${o.payment_status === 'paid' ? 'bale-order-status-paid' : 'bale-order-status-pending'}`}>
+                  {o.payment_status === 'paid' ? 'پرداخت شده' : 'در انتظار پرداخت'}
+                </span>
               </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
+              {(o.items ?? []).length > 0 && (
+                <ul className="bale-order-items">
+                  {(o.items ?? []).map((it, i) => (
+                    <li key={i} className="bale-order-item">
+                      <span>{it.product_name ?? 'محصول'}{it.color_name ? ` — ${it.color_name}` : ''}{it.size_dimensions ? ` — ${it.size_dimensions}` : ''}</span>
+                      <span className="bale-order-qty">×{it.quantity}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
   );
 };

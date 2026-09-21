@@ -1,0 +1,88 @@
+.bale-orders {
+  min-height: 100vh;
+  padding: 24px 20px;
+  color: var(--bale-text, #111827);
+  background: var(--bale-bg, #FAFAFA);
+  direction: rtl;
+  font-family: 'Vazirmatn', 'Estedad', sans-serif;
+}
+
+.bale-orders h1 {
+  margin: 0 0 20px;
+  font-size: 22px;
+}
+
+.bale-orders-list {
+  display: grid;
+  gap: 16px;
+}
+
+.bale-order-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--bale-border, #E5E7EB);
+  border-radius: 20px;
+  background: var(--bale-surface, #fff);
+  box-shadow: var(--bale-shadow, 0 4px 12px rgba(0, 0, 0, 0.05));
+}
+
+.bale-order-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bale-order-header strong {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.bale-order-status {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.bale-order-status-paid {
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.bale-order-status-pending {
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.bale-order-items {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin: 0;
+  list-style: none;
+  border-radius: 14px;
+  background: var(--bale-bg, #FAFAFA);
+}
+
+.bale-order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.bale-order-qty {
+  color: var(--bale-text-2, #6B7280);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bale-orders-empty {
+  color: var(--bale-text-2, #6B7280);
+  font-size: 14px;
+  text-align: center;
+  padding: 48px 16px;
+}

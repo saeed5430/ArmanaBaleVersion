@@ -36,6 +36,26 @@ export function getBaleInitData(): string {
   return getBaleWebApp()?.initData ?? '';
 }
 
+export interface BaleInitUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+}
+
+export function getBaleInitUser(): BaleInitUser | null {
+  try {
+    const initData = getBaleInitData();
+    if (!initData) return null;
+    const userJson = new URLSearchParams(initData).get('user');
+    if (!userJson) return null;
+    return JSON.parse(userJson) as BaleInitUser;
+  } catch {
+    return null;
+  }
+}
+
 export function isBaleEnv(): boolean {
   return getBaleWebApp() !== null;
 }

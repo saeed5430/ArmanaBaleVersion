@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { baleGetCategories, baleGetProduct, baleGetProducts, baleCreateOrder, type BaleCategory, type BaleProduct, type BaleVariant } from '../bale-client';
+import './BaleShopPage.css';
 
 interface SelectedItem {
   variantId: number;
@@ -86,69 +87,79 @@ export const BaleShopPage: FC = () => {
   }, [submitting, selected, navigate]);
 
   return (
-    <div style={{ padding: '16px', direction: 'rtl', fontFamily: 'Vazirmatn, sans-serif' }}>
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="جستجو..."
-        style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E5E7EB', marginBottom: '12px', fontFamily: 'inherit', boxSizing: 'border-box' }}
-      />
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '16px' }}>
-        <button type="button" onClick={() => setSelectedCategory(null)} style={chipStyle(selectedCategory === null)}>همه</button>
+    <div className="bale-shop">
+      <div className="bale-shop-search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جستجو..." />
+      </div>
+
+      <div className="bale-shop-chips">
+        <button type="button" onClick={() => setSelectedCategory(null)} className={`bale-chip ${selectedCategory === null ? 'bale-chip-active' : ''}`}>همه</button>
         {categories.map((c) => (
-          <button key={c.id} type="button" onClick={() => setSelectedCategory(c.id)} style={chipStyle(selectedCategory === c.id)}>{c.name}</button>
+          <button key={c.id} type="button" onClick={() => setSelectedCategory(c.id)} className={`bale-chip ${selectedCategory === c.id ? 'bale-chip-active' : ''}`}>{c.name}</button>
         ))}
       </div>
 
-      {loading && <p style={{ textAlign: 'center', color: '#6B7280' }}>در حال بارگذاری...</p>}
-      {!loading && products.length === 0 && <p style={{ textAlign: 'center', color: '#6B7280' }}>محصولی یافت نشد</p>}
+      {loading && <div className="bale-shop-loading">در حال بارگذاری...</div>}
+      {!loading && products.length === 0 && (
+        <div className="bale-shop-empty">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <p>محصولی یافت نشد</p>
+        </div>
+      )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="bale-shop-list">
         {products.map((p) => (
-          <div key={p.id} style={{ border: '1px solid #E5E7EB', borderRadius: '16px', padding: '12px', background: '#fff' }}>
-            {p.images[0] && <img src={p.images[0]} alt={p.name} style={{ width: '100%', borderRadius: '12px', marginBottom: '8px' }} />}
-            <div style={{ fontWeight: 600, fontSize: '15px' }}>{p.name}</div>
-            {p.price > 0 && <div style={{ fontSize: '14px', color: '#7C3AED', marginTop: '4px' }}>{p.price.toLocaleString('fa-IR')} تومان</div>}
-            {(variantsByProduct[p.id] ?? []).map((v) => (
-              <div key={v.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', padding: '8px', background: '#F9FAFB', borderRadius: '10px' }}>
-                <div style={{ fontSize: '13px' }}>
-                  {(v.colors ?? []).map((c) => c.name).join('، ') || `مدل ${v.id}`}
-                  {(v.sizes ?? []).length > 0 && ` — ${(v.sizes ?? []).map((s) => s.dimensions).join('، ')}`}
+          <div key={p.id} className="bale-product">
+            {p.images[0] && <img src={p.images[0]} alt={p.name} />}
+            <div className="bale-product-body">
+              <h3 className="bale-product-name">{p.name}</h3>
+              {p.price > 0 && <p className="bale-product-price">{p.price.toLocaleString('fa-IR')} تومان</p>}
+              {(variantsByProduct[p.id] ?? []).map((v) => (
+                <div key={v.id} className="bale-variant">
+                  <span>
+                    {(v.colors ?? []).map((c) => (
+                      <span key={c.id}>
+                        <span className="bale-variant-dot" style={{ backgroundColor: c.hex }} />
+                        {c.name}{' '}
+                      </span>
+                    ))}
+                    {(v.colors ?? []).length === 0 && `مدل ${v.id}`}
+                    {(v.sizes ?? []).length > 0 && ` — ${(v.sizes ?? []).map((s) => s.dimensions).join('، ')}`}
+                  </span>
+                  {selected.has(v.id) ? (
+                    <span className="bale-qty">
+                      <button type="button" className="bale-qty-btn" onClick={() => changeQty(v.id, 1)}>+</button>
+                      <span className="bale-qty-val">{selected.get(v.id)?.quantity}</span>
+                      <button type="button" className="bale-qty-btn" onClick={() => changeQty(v.id, -1)}>−</button>
+                    </span>
+                  ) : (
+                    <button type="button" className="bale-add-btn" onClick={() => toggleVariant(v.id)}>افزودن</button>
+                  )}
                 </div>
-                {selected.has(v.id) ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button type="button" onClick={() => changeQty(v.id, 1)} style={qtyBtn}>+</button>
-                    <span>{selected.get(v.id)?.quantity}</span>
-                    <button type="button" onClick={() => changeQty(v.id, -1)} style={qtyBtn}>−</button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => toggleVariant(v.id)} style={addBtn}>افزودن</button>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         ))}
       </div>
 
-      {success && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>سفارش با موفقیت ثبت شد!</div>
-      </div>}
+      {success && (
+        <div className="bale-shop-overlay">
+          <div className="bale-shop-success">سفارش با موفقیت ثبت شد!</div>
+        </div>
+      )}
 
       {totalQty > 0 && !success && (
-        <button type="button" onClick={handleSubmit} disabled={submitting} style={submitBtn}>
+        <button type="button" className="bale-submit" onClick={handleSubmit} disabled={submitting}>
           {submitting ? 'در حال ثبت...' : `ثبت سفارش (${totalQty} کالا)`}
         </button>
       )}
     </div>
   );
 };
-
-const chipStyle = (active: boolean): React.CSSProperties => ({
-  padding: '8px 16px', borderRadius: '20px', border: active ? 'none' : '1px solid #E5E7EB',
-  background: active ? '#7C3AED' : '#fff', color: active ? '#fff' : '#374151',
-  whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px',
-});
-
-const qtyBtn: React.CSSProperties = { width: '28px', height: '28px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer' };
-const addBtn: React.CSSProperties = { padding: '6px 14px', borderRadius: '8px', border: 'none', background: '#7C3AED', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px' };
-const submitBtn: React.CSSProperties = { position: 'sticky', bottom: '16px', width: '100%', padding: '14px', borderRadius: '14px', border: 'none', background: '#7C3AED', color: '#fff', fontSize: '15px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: '16px' };

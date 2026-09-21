@@ -1,39 +1,111 @@
 import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBaleAuth } from '../BaleAuthContext';
+import './BaleHomePage.css';
 
 export const BaleHomePage: FC = () => {
   const navigate = useNavigate();
   const { user } = useBaleAuth();
   const isProfileComplete = Boolean(user?.phone && user?.first_name && user?.last_name);
 
-  const cards = [
-    { title: 'مشخصات مشتری', desc: isProfileComplete ? 'مشاهده و ویرایش اطلاعات' : 'تکمیل اطلاعات برای سفارش', path: '/profile', badge: !isProfileComplete },
-    { title: 'سفارش آنلاین', desc: isProfileComplete ? 'مشاهده محصولات و ثبت سفارش' : 'ابتدا مشخصات خود را تکمیل کنید', path: isProfileComplete ? '/shop' : '/profile', badge: false },
-    { title: 'پیگیری سفارش‌ها', desc: 'مشاهده وضعیت سفارش‌ها', path: '/orders', badge: false },
-  ];
-
   return (
-    <div style={{ padding: '16px', direction: 'rtl', fontFamily: 'Vazirmatn, sans-serif' }}>
-      <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 8px' }}>به فروشگاه آرمانا خوش آمدید</h1>
-        <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>شال و روسری با کیفیت</p>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {cards.map((card) => (
-          <button
-            key={card.title}
-            type="button"
-            onClick={() => navigate(card.path)}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '16px', border: '1px solid #E5E7EB', background: '#fff', textAlign: 'right', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '16px', fontWeight: 600 }}>{card.title}</div>
-              <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{card.desc}</div>
+    <div className="bale-home">
+      <div className="bale-welcome">
+        <div className="bale-shapes">
+          <div className="bale-shape bale-shape-1" />
+          <div className="bale-shape bale-shape-2" />
+          <div className="bale-shape bale-shape-3" />
+          <div className="bale-shape bale-shape-4" />
+          <div className="bale-shape bale-shape-5" />
+        </div>
+        <div className="bale-welcome-content">
+          <div className="bale-logo-wrap">
+            <div className="bale-logo-circle" aria-label="لوگوی آرمانا">
+              <img src="https://ik.imagekit.io/xl73l8llh/products/logoo.jpg" alt="آرمانا" />
             </div>
-            {card.badge && <span style={{ background: '#EF4444', color: '#fff', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>!</span>}
-          </button>
-        ))}
+          </div>
+          <h1 className="bale-welcome-title">به فروشگاه آرمانا خوش آمدید</h1>
+          <p className="bale-welcome-sub">شال و روسری با کیفیت</p>
+        </div>
+      </div>
+
+      <div className="bale-hints">
+        <div className="bale-hint">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4" />
+            <path d="M12 8h.01" />
+          </svg>
+          <p>
+            برای <b>سفارش آنلاین</b> ابتدا باید مشخصات خود را در قسمت <b>مشخصات مشتری</b> وارد کنید
+          </p>
+        </div>
+        <div className="bale-hint">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4" />
+            <path d="M12 8h.01" />
+          </svg>
+          <p>
+            برای سفارش به قسمت <b>سفارش آنلاین</b> بروید
+          </p>
+        </div>
+      </div>
+
+      <div className="bale-actions">
+        <button type="button" className="bale-card" onClick={() => navigate('/profile')}>
+          <span className="bale-icon bale-icon-profile">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
+          <span className="bale-card-body">
+            <span className="bale-card-title">مشخصات مشتری</span>
+            <p className="bale-card-desc">{isProfileComplete ? 'مشاهده و ویرایش اطلاعات' : 'تکمیل اطلاعات برای سفارش'}</p>
+          </span>
+          {!isProfileComplete && <span className="bale-badge">!</span>}
+          <svg className="bale-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          className={`bale-card ${!isProfileComplete ? 'bale-card-disabled' : ''}`}
+          onClick={() => navigate(isProfileComplete ? '/shop' : '/profile')}
+        >
+          <span className="bale-icon bale-icon-buy">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
+          </span>
+          <span className="bale-card-body">
+            <span className="bale-card-title">سفارش آنلاین</span>
+            <p className="bale-card-desc">{isProfileComplete ? 'مشاهده محصولات و ثبت سفارش' : 'ابتدا مشخصات مشتری خود را تکمیل کنید'}</p>
+          </span>
+          <svg className="bale-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+
+        <button type="button" className="bale-card" onClick={() => navigate('/orders')}>
+          <span className="bale-icon bale-icon-orders">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2h12v20H6z" />
+              <path d="M9 6h6M9 10h6M9 14h4" />
+            </svg>
+          </span>
+          <span className="bale-card-body">
+            <span className="bale-card-title">پیگیری سفارش‌ها</span>
+            <p className="bale-card-desc">مشاهده وضعیت سفارش‌ها</p>
+          </span>
+          <svg className="bale-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
       </div>
     </div>
   );

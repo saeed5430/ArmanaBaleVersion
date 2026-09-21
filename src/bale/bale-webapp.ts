@@ -24,6 +24,7 @@ interface BaleWebAppFull {
 declare global {
   interface Window {
     Bale?: { WebApp?: BaleWebAppFull };
+    Telegram?: { WebApp?: { initData?: string } };
   }
 }
 

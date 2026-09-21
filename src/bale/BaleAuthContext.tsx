@@ -27,13 +27,27 @@ export function BaleAuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     baleReady();
-    if (!isBaleEnv()) {
-      setError('لطفا از داخل بله وارد شوید');
+    const existingToken = localStorage.getItem('bale_session_token');
+    if (existingToken) {
+      baleMe().then((res) => {
+        setUser(res.user);
+        setLoading(false);
+      }).catch(() => {
+        localStorage.removeItem('bale_session_token');
+        tryLogin();
+      });
+      return;
+    }
+    tryLogin();
+  }, []);
+
+  async function tryLogin() {
+    if (!isBaleEnv() || !getBaleInitData()) {
       setLoading(false);
       return;
     }
-    doLogin();
-  }, []);
+    await doLogin();
+  }
 
   async function doLogin() {
     try {

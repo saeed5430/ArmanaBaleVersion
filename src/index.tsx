@@ -5,7 +5,6 @@ import ReactDOM from 'react-dom/client';
 import { StrictMode } from 'react';
 
 import { Root } from '@/components/Root.tsx';
-import { EnvUnsupported } from '@/components/EnvUnsupported.tsx';
 import { getBaleWebApp } from '@/bale/bale-webapp';
 
 import './index.css';
@@ -23,32 +22,11 @@ function renderBale() {
   );
 }
 
-async function renderTelegram() {
-  const { retrieveLaunchParams } = await import('@tma.js/sdk-react');
-  const { init } = await import('@/init.ts');
-  try {
-    const launchParams = retrieveLaunchParams();
-    const { tgWebAppPlatform: platform } = launchParams;
-    const debug = (launchParams.tgWebAppStartParam || '').includes('debug')
-      || import.meta.env.DEV;
-
-    await init({
-      debug,
-      eruda: debug && ['ios', 'android'].includes(platform),
-      mockForMacOS: platform === 'macos',
-    });
-    root.render(
-      <StrictMode>
-        <Root platform="telegram" />
-      </StrictMode>,
-    );
-  } catch {
-    root.render(<EnvUnsupported />);
+let tries = 0;
+const timer = setInterval(() => {
+  tries += 1;
+  if (getBaleWebApp() || tries > 50) {
+    clearInterval(timer);
+    renderBale();
   }
-}
-
-if (getBaleWebApp()) {
-  renderBale();
-} else {
-  void renderTelegram();
-}
+}, 100);

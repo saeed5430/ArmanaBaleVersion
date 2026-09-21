@@ -1,27 +1,33 @@
-export interface BaleWebAppUser {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
+interface BaleBackButton {
+  isVisible: boolean;
+  show: () => void;
+  hide: () => void;
+  onClick: (cb: () => void) => void;
+  offClick: (cb: () => void) => void;
 }
 
-interface BaleWebApp {
+interface BaleWebAppFull {
   initData: string;
   version: string;
   colorScheme: 'light' | 'dark';
+  themeParams: Record<string, string>;
   ready: () => void;
   expand: () => void;
   close: () => void;
+  enableClosingConfirmation: () => void;
+  disableClosingConfirmation: () => void;
+  onEvent: (type: string, handler: (...args: unknown[]) => void) => void;
+  offEvent: (type: string, handler: (...args: unknown[]) => void) => void;
+  BackButton: BaleBackButton;
 }
 
 declare global {
   interface Window {
-    Bale?: { WebApp?: BaleWebApp };
+    Bale?: { WebApp?: BaleWebAppFull };
   }
 }
 
-export function getBaleWebApp(): BaleWebApp | null {
+export function getBaleWebApp(): BaleWebAppFull | null {
   return window.Bale?.WebApp ?? null;
 }
 
@@ -30,7 +36,7 @@ export function getBaleInitData(): string {
 }
 
 export function isBaleEnv(): boolean {
-  return getBaleInitData().length > 0;
+  return getBaleWebApp() !== null;
 }
 
 export function baleReady(): void {
@@ -45,4 +51,8 @@ export function baleReady(): void {
 
 export function getBaleColorScheme(): 'light' | 'dark' {
   return getBaleWebApp()?.colorScheme ?? 'light';
+}
+
+export function getBaleThemeParams(): Record<string, string> {
+  return getBaleWebApp()?.themeParams ?? {};
 }

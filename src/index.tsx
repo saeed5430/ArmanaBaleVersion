@@ -3,11 +3,10 @@ import '@telegram-apps/telegram-ui/dist/styles.css';
 
 import ReactDOM from 'react-dom/client';
 import { StrictMode } from 'react';
-import { retrieveLaunchParams } from '@tma.js/sdk-react';
 
 import { Root } from '@/components/Root.tsx';
 import { EnvUnsupported } from '@/components/EnvUnsupported.tsx';
-import { init } from '@/init.ts';
+import { getBaleWebApp } from '@/bale/bale-webapp';
 
 import './index.css';
 
@@ -16,25 +15,40 @@ import './mockEnv.ts';
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 
-try {
-  const launchParams = retrieveLaunchParams();
-  const { tgWebAppPlatform: platform } = launchParams;
-  const debug = (launchParams.tgWebAppStartParam || '').includes('debug')
-    || import.meta.env.DEV;
+function renderBale() {
+  root.render(
+    <StrictMode>
+      <Root platform="bale" />
+    </StrictMode>,
+  );
+}
 
-  // Configure all application dependencies.
-  await init({
-    debug,
-    eruda: debug && ['ios', 'android'].includes(platform),
-    mockForMacOS: platform === 'macos',
-  })
-    .then(() => {
-      root.render(
-        <StrictMode>
-          <Root/>
-        </StrictMode>,
-      );
+async function renderTelegram() {
+  const { retrieveLaunchParams } = await import('@tma.js/sdk-react');
+  const { init } = await import('@/init.ts');
+  try {
+    const launchParams = retrieveLaunchParams();
+    const { tgWebAppPlatform: platform } = launchParams;
+    const debug = (launchParams.tgWebAppStartParam || '').includes('debug')
+      || import.meta.env.DEV;
+
+    await init({
+      debug,
+      eruda: debug && ['ios', 'android'].includes(platform),
+      mockForMacOS: platform === 'macos',
     });
-} catch {
-  root.render(<EnvUnsupported/>);
+    root.render(
+      <StrictMode>
+        <Root platform="telegram" />
+      </StrictMode>,
+    );
+  } catch {
+    root.render(<EnvUnsupported />);
+  }
+}
+
+if (getBaleWebApp()) {
+  renderBale();
+} else {
+  void renderTelegram();
 }

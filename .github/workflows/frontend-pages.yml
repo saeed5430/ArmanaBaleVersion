@@ -27,7 +27,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_API_URL: https://armana-bale.abdollahi003.workers.dev
+          VITE_API_URL: https://armana-bale-worker.abdollahi003.workers.dev
 
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4

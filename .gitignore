@@ -35,3 +35,7 @@ worker/.dev.vars
 worker/wrangler.toml
 
 telegram-user-service/sessions/
+
+# Local agent skills (not part of repo)
+.agents/
+skills-lock.json

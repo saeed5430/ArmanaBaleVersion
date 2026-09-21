@@ -2,9 +2,8 @@
 name: Deploy Mini App to GitHub Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
-    branches: ['master']
+    branches: ['master', 'main']
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -44,7 +43,7 @@ jobs:
         run: npm run build
         env:
           # Backend API origin (Cloudflare Worker). Hosted on GitHub Pages, so the API is cross-origin.
-          VITE_API_URL: https://scarf-mini-app.abdollahi003.workers.dev
+          VITE_API_URL: https://armana-bale.abdollahi003.workers.dev
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

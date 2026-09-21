@@ -42,8 +42,22 @@
           "name": "deepseek-v4-flash-inferx"
         }
       }
+    },
+
+    "9router": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "9Router Local",
+      "options": {
+        "baseURL": "http://127.0.0.1:20128/v1",
+        "apiKey": "sk-1e7abf4bbb515828-aqgyiw-89f66101"
+      },
+      "models": {
+        "myCombo": {
+          "name": "myCombo"
+        }
+      }
     }
   },
 
-  "model": "inferx/deepseek-v4-flash"
+  "model": "9router/myCombo"
 }

@@ -7,6 +7,8 @@ import { adminTelegramRoutes } from './routes/admin-telegram';
 import { authRoutes } from './routes/auth';
 import { uploadRoutes } from './routes/upload-image';
 import { telegramRoutes } from './routes/telegram';
+import { baleRoutes } from './bale/bale-routes';
+import { baleWebhookRoutes } from './bale/bale-webhook';
 import { cronRoutes } from './routes/cron';
 import { setupRoutes } from './routes/setup';
 import { runMigrations } from './db/migrate';
@@ -25,6 +27,9 @@ type Bindings = {
   TELEGRAM_USER_SERVICE_URL: string;
   TELEGRAM_USER_SERVICE_TOKEN: string;
   MINI_APP_URL: string;
+  BALE_DB: D1Database;
+  BALE_BOT_TOKEN: string;
+  BALE_ORDER_BOT_TOKEN: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -74,6 +79,10 @@ app.route('/api', apiRoutes);
 
 // Telegram webhook (no auth needed)
 app.route('/webhook/telegram', telegramRoutes);
+
+// Bale Mini App API (BALE_DB) + webhooks
+app.route('/api/bale', baleRoutes);
+app.route('/webhook/bale', baleWebhookRoutes);
 
 // Cron routes (for scheduled tasks)
 app.route('/cron', cronRoutes);

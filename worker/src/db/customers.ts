@@ -57,7 +57,7 @@ export class CustomersDB {
     // Existing customer - only update safe fields (NOT phone, address, postal_code)
     const now = nowJalali();
     const stmt = this.db.prepare(`
-      UPDATE customers SET
+      UPDATE telegram_customers SET
         username = COALESCE(?, username),
         language_code = COALESCE(?, language_code),
         avatar_url = COALESCE(?, avatar_url),
@@ -130,7 +130,7 @@ export class CustomersDB {
     }
 
     values.push(id);
-    const stmt = this.db.prepare(`UPDATE customers SET ${fields.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE telegram_customers SET ${fields.join(', ')} WHERE id = ?`);
     await stmt.bind(...values).run();
 
     return this.findById(id);

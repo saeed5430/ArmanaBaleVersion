@@ -62,16 +62,17 @@ export const ProductList: React.FC = () => {
   };
 
   const parseImages = (images: unknown): string[] => {
-    if (Array.isArray(images)) return images.map(String);
-    if (typeof images === "string") {
-      try {
-        const parsed = JSON.parse(images);
-        return Array.isArray(parsed) ? parsed.map(String) : [];
-      } catch {
-        return [];
+    const arr = typeof images === "string" ? (() => { try { return JSON.parse(images); } catch { return []; } })() : images;
+    if (!Array.isArray(arr)) return [];
+    const out: string[] = [];
+    for (const item of arr) {
+      if (typeof item === "string") {
+        if (item && item !== "[object Object]") out.push(item);
+      } else if (item && typeof item === "object" && typeof (item as { url?: unknown }).url === "string") {
+        out.push((item as { url: string }).url);
       }
     }
-    return [];
+    return out;
   };
 
   const columns = [

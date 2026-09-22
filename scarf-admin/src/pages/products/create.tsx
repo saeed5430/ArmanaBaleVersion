@@ -115,7 +115,7 @@ export const ProductCreate: React.FC = () => {
         onFinish={async (values) => {
           await formProps.onFinish?.({
             ...values,
-            images: imageList,
+            images: imageList.map((img) => img.url).filter(Boolean),
           });
         }}
         layout="vertical"

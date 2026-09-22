@@ -109,14 +109,36 @@ export interface BaleSetting {
   updated_at: number;
 }
 
+function normalizeImageUrl(item: unknown): string | null {
+  if (typeof item === 'string') {
+    const s = item.trim();
+    if (!s || s === '[object Object]') return null;
+    return s;
+  }
+  if (item && typeof item === 'object') {
+    const url = (item as { url?: unknown }).url;
+    if (typeof url === 'string') return normalizeImageUrl(url);
+  }
+  return null;
+}
+
 function parseImages(raw: unknown): string[] {
   if (raw == null) return [];
-  try {
-    const parsed = JSON.parse(String(raw));
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
+  let parsed: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return [];
+    }
   }
+  if (!Array.isArray(parsed)) return [];
+  const out: string[] = [];
+  for (const item of parsed) {
+    const url = normalizeImageUrl(item);
+    if (url) out.push(url);
+  }
+  return out;
 }
 
 export class BaleDB {

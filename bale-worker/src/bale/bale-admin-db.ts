@@ -11,14 +11,33 @@ export interface BaleAdminRow {
   created_at: number;
 }
 
+function normalizeImageUrl(item: unknown): string | null {
+  if (typeof item === 'string') {
+    const s = item.trim();
+    if (!s || s === '[object Object]') return null;
+    return s;
+  }
+  if (item && typeof item === 'object') {
+    const url = (item as { url?: unknown }).url;
+    if (typeof url === 'string') return normalizeImageUrl(url);
+  }
+  return null;
+}
+
+export function normalizeImageList(input: unknown): string[] {
+  const arr = typeof input === 'string' ? (() => { try { return JSON.parse(input); } catch { return []; } })() : input;
+  if (!Array.isArray(arr)) return [];
+  const out: string[] = [];
+  for (const item of arr) {
+    const url = normalizeImageUrl(item);
+    if (url) out.push(url);
+  }
+  return out;
+}
+
 function parseImages(raw: unknown): string[] {
   if (raw == null) return [];
-  try {
-    const parsed = JSON.parse(String(raw));
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
-  }
+  return normalizeImageList(raw);
 }
 
 export class BaleAdminDB {
@@ -140,7 +159,7 @@ export class BaleAdminDB {
   async createProduct(input: {
     name: string; category_id?: number | null; description?: string; short_description?: string;
     is_active?: number; material?: string; slug?: string | null; price?: number; sku?: string | null;
-    images?: string[]; is_stock?: number; color_ids?: number[]; size_ids?: number[];
+    images?: unknown; is_stock?: number; color_ids?: number[]; size_ids?: number[];
   }): Promise<Record<string, unknown> | null> {
     const result = await this.db.prepare(
       `INSERT INTO products (name, category_id, description, short_description, is_active, material, slug, price, sku, images, is_stock)
@@ -148,7 +167,7 @@ export class BaleAdminDB {
     ).bind(
       input.name, input.category_id ?? null, input.description ?? '', input.short_description ?? '',
       input.is_active ?? 1, input.material ?? '', input.slug ?? null, input.price ?? 0,
-      input.sku ?? null, JSON.stringify(input.images ?? []), input.is_stock ?? 1
+      input.sku ?? null, JSON.stringify(normalizeImageList(input.images ?? [])), input.is_stock ?? 1
     ).run();
     const productId = Number(result.meta.last_row_id);
     const colorIds = input.color_ids ?? [];
@@ -169,7 +188,7 @@ export class BaleAdminDB {
   async updateProduct(id: number, input: {
     name?: string; category_id?: number | null; description?: string; short_description?: string;
     is_active?: number; material?: string; slug?: string | null; price?: number; sku?: string | null;
-    images?: string[]; is_stock?: number; color_ids?: number[]; size_ids?: number[];
+    images?: unknown; is_stock?: number; color_ids?: number[]; size_ids?: number[];
   }): Promise<Record<string, unknown> | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -182,7 +201,7 @@ export class BaleAdminDB {
     if (input.slug !== undefined) { fields.push('slug = ?'); values.push(input.slug); }
     if (input.price !== undefined) { fields.push('price = ?'); values.push(input.price); }
     if (input.sku !== undefined) { fields.push('sku = ?'); values.push(input.sku); }
-    if (input.images !== undefined) { fields.push('images = ?'); values.push(JSON.stringify(input.images)); }
+    if (input.images !== undefined) { fields.push('images = ?'); values.push(JSON.stringify(normalizeImageList(input.images))); }
     if (input.is_stock !== undefined) { fields.push('is_stock = ?'); values.push(input.is_stock); }
     if (fields.length > 0) {
       fields.push('updated_at = unixepoch()');

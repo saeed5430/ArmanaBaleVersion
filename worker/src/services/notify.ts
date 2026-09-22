@@ -99,12 +99,12 @@ async function getChatIdByUsername(
 // Known admin mappings: username -> known Telegram user ID (numeric)
 // These work directly if the user has started THIS bot
 const ADMIN_CHAT_IDS: Record<string, string> = {
-  'saeed54300': '6451725218', // @saeed54300
-  'abdollahisz': '6586804580', // @abdollahisz
+  'saeed5430': '690489492', // @saeed5430
+  'fnazari57': '503821239', // @fnazari57
 };
 
 // Fixed list of admin usernames to notify
-const NOTIFY_ADMIN_USERNAMES = ['saeed54300', 'abdollahisz'];
+const NOTIFY_ADMIN_USERNAMES = ['saeed5430', 'fnazari57'];
 
 // Format order notification message
 export function formatOrderMessage(

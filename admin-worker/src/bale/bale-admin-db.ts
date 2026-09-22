@@ -443,9 +443,9 @@ export class BaleAdminDB {
   }
 
   async getOrderReceiptFileId(id: number, type: 'invoice' | 'voice'): Promise<string | null> {
-    const row = await this.db.prepare('SELECT invoice_file_id, receipt_file_id FROM orders WHERE id = ?').bind(id).first<{ invoice_file_id: string | null; receipt_file_id: string | null }>();
+    const row = await this.db.prepare('SELECT invoice_file_id, receipt_file_id, voice_file_id FROM orders WHERE id = ?').bind(id).first<{ invoice_file_id: string | null; receipt_file_id: string | null; voice_file_id: string | null }>();
     if (!row) return null;
-    if (type === 'voice') return null;
+    if (type === 'voice') return row.voice_file_id;
     return row.invoice_file_id ?? row.receipt_file_id;
   }
 

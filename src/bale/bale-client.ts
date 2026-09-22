@@ -106,7 +106,27 @@ export async function baleGetProduct(id: number): Promise<{ product: BaleProduct
   return baleRequest(`/api/bale/products/${id}`);
 }
 
-export async function baleCreateOrder(data: { delivery_method?: string; notes?: string; items: { variant_id: number; quantity: number }[] }): Promise<{ order: BaleOrder }> {
+export async function baleGetSizes(): Promise<{ items: BaleSize[]; total: number }> {
+  return baleRequest('/api/bale/sizes');
+}
+
+export async function baleGetProductColors(productId: number): Promise<{ colors: BaleColor[] }> {
+  return baleRequest(`/api/bale/products/${productId}/colors`);
+}
+
+export async function baleGetProductSizes(productId: number): Promise<{ sizes: BaleSize[] }> {
+  return baleRequest(`/api/bale/products/${productId}/sizes`);
+}
+
+export type BaleDeliveryMethod = 'in_person' | 'tipax' | 'carrier';
+
+export const BALE_DELIVERY_LABELS: Record<BaleDeliveryMethod, string> = {
+  in_person: 'تحویل حضوری',
+  tipax: 'ارسال با تیپاکس',
+  carrier: 'ارسال با باربری',
+};
+
+export async function baleCreateOrder(data: { delivery_method?: string; notes?: string; items: { variant_id?: number; product_id?: number; color_id?: number | null; size_id?: number | null; quantity: number }[] }): Promise<{ order: BaleOrder }> {
   return baleRequest('/api/bale/orders', { method: 'POST', body: JSON.stringify(data) });
 }
 

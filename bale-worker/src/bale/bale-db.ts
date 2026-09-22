@@ -191,6 +191,47 @@ export class BaleDB {
     return results;
   }
 
+  async listSizes(): Promise<BaleSize[]> {
+    const { results } = await this.db.prepare('SELECT * FROM sizes ORDER BY dimensions ASC').all<BaleSize>();
+    return results;
+  }
+
+  async listProductColors(productId: number): Promise<BaleColor[]> {
+    const { results } = await this.db.prepare(
+      `SELECT DISTINCT c.* FROM colors c
+       JOIN variant_colors vc ON vc.color_id = c.id
+       JOIN variants v ON v.id = vc.variant_id
+       WHERE v.product_id = ? ORDER BY c.name ASC`
+    ).bind(productId).all<BaleColor>();
+    return results;
+  }
+
+  async listProductSizes(productId: number): Promise<BaleSize[]> {
+    const { results } = await this.db.prepare(
+      `SELECT DISTINCT s.* FROM sizes s
+       JOIN variant_sizes vs ON vs.size_id = s.id
+       JOIN variants v ON v.id = vs.variant_id
+       WHERE v.product_id = ? ORDER BY s.dimensions ASC`
+    ).bind(productId).all<BaleSize>();
+    return results;
+  }
+
+  async resolveVariantId(productId: number, colorId?: number | null, sizeId?: number | null): Promise<number | null> {
+    const { results } = await this.db.prepare(
+      'SELECT id FROM variants WHERE product_id = ? AND is_stock = 1 ORDER BY id ASC'
+    ).bind(productId).all<{ id: number }>();
+    if (results.length === 0) return null;
+    if (colorId == null && sizeId == null) return results[0].id;
+    for (const row of results) {
+      const colors = colorId == null ? [{ id: colorId }] :
+        await this.db.prepare('SELECT color_id AS id FROM variant_colors WHERE variant_id = ? AND color_id = ?').bind(row.id, colorId).all<{ id: number }>().then((r) => r.results);
+      const sizes = sizeId == null ? [{ id: sizeId }] :
+        await this.db.prepare('SELECT size_id AS id FROM variant_sizes WHERE variant_id = ? AND size_id = ?').bind(row.id, sizeId).all<{ id: number }>().then((r) => r.results);
+      if (colors.length > 0 && sizes.length > 0) return row.id;
+    }
+    return results[0].id;
+  }
+
   async createOrder(customerId: string, input: { delivery_method?: string | null; notes?: string | null; items: { variant_id: number; quantity: number }[] }): Promise<BaleOrder> {
     const result = await this.db.prepare(
       'INSERT INTO orders (customer_id, delivery_method, notes) VALUES (?, ?, ?)'

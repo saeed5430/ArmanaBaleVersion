@@ -95,6 +95,30 @@ baleRoutes.get('/products/:id', async (c) => {
   return c.json({ product, variants: enriched });
 });
 
+baleRoutes.get('/sizes', async (c) => {
+  const db = c.env.BALE_DB;
+  if (!db) return c.json({ error: 'Database not configured' }, 500);
+  const bale = new BaleDB(db);
+  const items = await bale.listSizes();
+  return c.json({ items, total: items.length });
+});
+
+baleRoutes.get('/products/:id/colors', async (c) => {
+  const db = c.env.BALE_DB;
+  if (!db) return c.json({ error: 'Database not configured' }, 500);
+  const bale = new BaleDB(db);
+  const colors = await bale.listProductColors(Number(c.req.param('id')));
+  return c.json({ colors });
+});
+
+baleRoutes.get('/products/:id/sizes', async (c) => {
+  const db = c.env.BALE_DB;
+  if (!db) return c.json({ error: 'Database not configured' }, 500);
+  const bale = new BaleDB(db);
+  const sizes = await bale.listProductSizes(Number(c.req.param('id')));
+  return c.json({ sizes });
+});
+
 baleRoutes.get('/variants/:id', async (c) => {
   const db = c.env.BALE_DB;
   if (!db) return c.json({ error: 'Database not configured' }, 500);
@@ -111,25 +135,62 @@ baleRoutes.post('/orders', async (c) => {
   if (!db) return c.json({ error: 'Database not configured' }, 500);
   const userId = await requireBaleUser(c, c.env.JWT_SECRET ?? '');
   if (!userId) return c.json({ error: 'Token required' }, 401);
-  const body = await c.req.json<{ delivery_method?: string; notes?: string; items: { variant_id: number; quantity: number }[] }>().catch(() => null);
+  const body = await c.req.json<{ delivery_method?: string; notes?: string; items: { variant_id?: number; product_id?: number; color_id?: number | null; size_id?: number | null; quantity: number }[] }>().catch(() => null);
   if (!body?.items || !Array.isArray(body.items) || body.items.length === 0) {
     return c.json({ error: 'items is required' }, 400);
   }
+  if (body.delivery_method !== undefined && body.delivery_method !== null && !['in_person', 'tipax', 'carrier'].includes(body.delivery_method)) {
+    return c.json({ error: 'روش تحویل نامعتبر است' }, 400);
+  }
   try {
     const bale = new BaleDB(db);
-    const order = await bale.createOrder(userId, body);
+    const resolvedItems: { variant_id: number; quantity: number }[] = [];
+    for (const item of body.items) {
+      let variantId = item.variant_id;
+      if (!variantId && item.product_id) {
+        const resolved = await bale.resolveVariantId(item.product_id, item.color_id ?? null, item.size_id ?? null);
+        if (!resolved) return c.json({ error: `Variant not found for product ${item.product_id}` }, 400);
+        variantId = resolved;
+      }
+      if (!variantId) return c.json({ error: 'variant_id or product_id is required' }, 400);
+      resolvedItems.push({ variant_id: variantId, quantity: item.quantity });
+    }
+    const order = await bale.createOrder(userId, { delivery_method: body.delivery_method, notes: body.notes, items: resolvedItems });
     const items = await bale.listOrderItems(order.id);
     const user = await bale.getUser(userId);
     const notifyToken = c.env.BALE_ORDER_BOT_TOKEN;
     if (notifyToken) {
-      const lines = items.map((it, i) => `${i + 1}. ${it.product_name ?? 'محصول'}${it.color_name ? ` - ${it.color_name}` : ''}${it.size_dimensions ? ` - ${it.size_dimensions}` : ''} ×${it.quantity}`);
-      const text = [`🛍️ سفارش جدید #${order.id}`, '', `👤 ${user?.first_name ?? ''} ${user?.last_name ?? ''}`, user?.username ? `@${user.username}` : null, user?.phone ? `📞 ${user.phone}` : null, '', ...lines, '', `📦 ${body.delivery_method ?? '-'}`].filter((x) => x !== null).join('\n');
+      const deliveryLabels: Record<string, string> = { in_person: '🏪 تحویل حضوری', tipax: '🚚 ارسال با تیپاکس', carrier: '🚛 ارسال با باربری' };
+      const name = `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || '—';
+      const lines = items.map((it, i) => `${i + 1}. ${it.product_name ?? 'محصول'}${it.color_name ? ` 🎨 ${it.color_name}` : ''}${it.size_dimensions ? ` 📏 ${it.size_dimensions}` : ''}\n   تعداد: ${it.quantity}`);
+      const text = [
+        `🛍️ سفارش جدید #${order.id}`, '',
+        '👤 اطلاعات مشتری:',
+        `├ نام: ${name}`,
+        `├ یوزرنیم: ${user?.username ? `@${user.username}` : 'ندارد'}`,
+        `├ شناسه: ${userId}`,
+        user?.phone ? `├ تلفن: ${user.phone}` : null,
+        user?.address ? `├ آدرس: ${user.address}` : null,
+        '', '',
+        body.delivery_method ? `📦 نحوه تحویل: ${deliveryLabels[body.delivery_method] ?? body.delivery_method}\n` : null,
+        '📦 اقلام سفارش:',
+        ...lines, '',
+        '💳 پرداخت: ❌ پرداخت نشده',
+        '🧾 فاکتور: ❌ ثبت نشده',
+        '🎤 صدا: ❌ ثبت نشده',
+      ].filter((x) => x !== null).join('\n');
+      const keyboard = {
+        inline_keyboard: [[
+          { text: '📷 ارسال فاکتور', callback_data: `order:invoice:${order.id}` },
+          { text: '🎤 ارسال صدا', callback_data: `order:voice:${order.id}` },
+        ]],
+      };
       const adminIds = (c.env.BALE_ADMIN_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
       await Promise.all(adminIds.map((chatId) =>
         fetch(`https://tapi.bale.ai/bot${notifyToken}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text }),
+          body: JSON.stringify({ chat_id: chatId, text, reply_markup: keyboard }),
         }).catch(() => null)
       ));
     }

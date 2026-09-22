@@ -1,164 +1,311 @@
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { baleGetCategories, baleGetProduct, baleGetProducts, baleCreateOrder, type BaleCategory, type BaleProduct, type BaleVariant } from '../bale-client';
+import {
+  baleGetCategories,
+  baleGetProducts,
+  baleGetProductColors,
+  baleGetProductSizes,
+  baleGetSizes,
+  baleCreateOrder,
+  BALE_DELIVERY_LABELS,
+  type BaleCategory,
+  type BaleProduct,
+  type BaleColor,
+  type BaleDeliveryMethod,
+  type BaleSize,
+} from '../bale-client';
+import { BaleFilterBar } from './BaleFilterBar';
+import { BaleProductCard } from './BaleProductCard';
 import './BaleShopPage.css';
 
-interface SelectedItem {
-  variantId: number;
+export interface BaleProductWithRelations {
+  product: BaleProduct;
+  category: BaleCategory | null;
+  colors: BaleColor[];
+  sizes: BaleSize[];
+}
+
+export interface BaleSelectedItem {
+  productId: number;
+  colorId: number;
+  sizeId: number;
   quantity: number;
+}
+
+export interface BaleDisplayItem {
+  pwr: BaleProductWithRelations;
+  displaySize: BaleSize | null;
+}
+
+function sizeValue(size: BaleSize): number {
+  const n = parseFloat(size.dimensions);
+  return Number.isNaN(n) ? -Infinity : n;
+}
+
+function buildDisplayItems(products: BaleProductWithRelations[]): BaleDisplayItem[] {
+  if (products.length === 0) return [];
+  let maxVal = -Infinity;
+  for (const pwr of products) {
+    for (const s of pwr.sizes) {
+      const v = sizeValue(s);
+      if (v > maxVal) maxVal = v;
+    }
+  }
+  const result: BaleDisplayItem[] = [];
+  for (const pwr of products) {
+    const big = pwr.sizes.find((s) => sizeValue(s) === maxVal);
+    if (big) result.push({ pwr, displaySize: big });
+    else result.push({ pwr, displaySize: pwr.sizes[0] ?? null });
+  }
+  const otherVals = Array.from(new Set(products.flatMap((pwr) => pwr.sizes.map((s) => sizeValue(s)))))
+    .filter((v) => v !== maxVal)
+    .sort((a, b) => b - a);
+  for (const v of otherVals) {
+    for (const pwr of products) {
+      const big = pwr.sizes.find((s) => sizeValue(s) === maxVal);
+      if (!big) continue;
+      const match = pwr.sizes.find((s) => sizeValue(s) === v);
+      if (match) result.push({ pwr, displaySize: match });
+    }
+  }
+  return result;
 }
 
 export const BaleShopPage: FC = () => {
   const navigate = useNavigate();
   const [categories, setCategories] = useState<BaleCategory[]>([]);
-  const [products, setProducts] = useState<BaleProduct[]>([]);
-  const [variantsByProduct, setVariantsByProduct] = useState<Record<number, BaleVariant[]>>({});
+  const [products, setProducts] = useState<BaleProductWithRelations[]>([]);
+  const [sizes, setSizes] = useState<BaleSize[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Map<number, SelectedItem>>(new Map());
+  const [selectedSize, setSelectedSize] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSelectCategory = useCallback((categoryId: number | null, sizeId?: number | null) => {
+    setSelectedCategory(categoryId);
+    setSelectedSize(sizeId ?? null);
+  }, []);
+
+  const [selectedItems, setSelectedItems] = useState<Map<string, BaleSelectedItem>>(new Map());
+  const [deliveryMethod, setDeliveryMethod] = useState<BaleDeliveryMethod>('in_person');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   useEffect(() => {
-    baleGetCategories().then((r) => setCategories(r.categories)).catch(() => {});
+    baleGetCategories().then((res) => setCategories(res.categories)).catch(() => {});
+    baleGetSizes().then((res) => setSizes(res.items)).catch(() => {});
   }, []);
 
   useEffect(() => {
     setLoading(true);
-    baleGetProducts(selectedCategory ?? undefined, search || undefined)
+    baleGetProducts(selectedCategory ?? undefined, searchQuery || undefined)
       .then(async (res) => {
-        setProducts(res.items);
-        const entries = await Promise.all(res.items.map(async (p) => {
-          try {
-            const detail = await baleGetProduct(p.id);
-            return [p.id, detail.variants] as const;
-          } catch {
-            return [p.id, []] as const;
-          }
-        }));
-        setVariantsByProduct(Object.fromEntries(entries));
+        const enriched: BaleProductWithRelations[] = await Promise.all(
+          res.items.map(async (product) => {
+            const [colorsRes, sizesRes] = await Promise.all([
+              baleGetProductColors(product.id).catch(() => ({ colors: [] })),
+              baleGetProductSizes(product.id).catch(() => ({ sizes: [] })),
+            ]);
+            const category = categories.find((c) => c.id === product.category_id) || null;
+            return { product, category, colors: colorsRes.colors || [], sizes: sizesRes.sizes || [] };
+          })
+        );
+        setProducts(enriched);
         setLoading(false);
       })
       .catch(() => { setProducts([]); setLoading(false); });
-  }, [selectedCategory, search]);
+  }, [selectedCategory, searchQuery, categories]);
 
-  const toggleVariant = useCallback((variantId: number) => {
-    setSelected((prev) => {
+  const toggleColor = useCallback((productId: number, colorId: number, sizeId: number) => {
+    const key = `${productId}-${colorId}-${sizeId}`;
+    setSelectedItems((prev) => {
       const next = new Map(prev);
-      if (next.has(variantId)) next.delete(variantId);
-      else next.set(variantId, { variantId, quantity: 1 });
+      if (next.has(key)) next.delete(key);
+      else next.set(key, { productId, colorId, sizeId, quantity: 1 });
       return next;
     });
   }, []);
 
-  const changeQty = useCallback((variantId: number, delta: number) => {
-    setSelected((prev) => {
+  const updateQuantity = useCallback((key: string, delta: number) => {
+    setSelectedItems((prev) => {
       const next = new Map(prev);
-      const item = next.get(variantId);
-      if (!item) return prev;
-      const qty = item.quantity + delta;
-      if (qty <= 0) next.delete(variantId);
-      else next.set(variantId, { ...item, quantity: qty });
+      const item = next.get(key);
+      if (item) {
+        const newQty = Math.max(0, item.quantity + delta);
+        if (newQty === 0) next.delete(key);
+        else next.set(key, { ...item, quantity: newQty });
+      }
       return next;
     });
   }, []);
 
-  const totalQty = useMemo(() => {
+  const orderSummary = useMemo(() => {
+    const productMap = new Map<number, {
+      product: BaleProduct;
+      category: BaleCategory | null;
+      items: Array<{ color: BaleColor; size: BaleSize; quantity: number }>;
+    }>();
+    selectedItems.forEach((item) => {
+      const productData = products.find((p) => p.product.id === item.productId);
+      if (!productData) return;
+      const color = productData.colors.find((c) => c.id === item.colorId);
+      const size = productData.sizes.find((s) => s.id === item.sizeId);
+      if (!color || !size) return;
+      if (!productMap.has(item.productId)) {
+        productMap.set(item.productId, { product: productData.product, category: productData.category, items: [] });
+      }
+      productMap.get(item.productId)!.items.push({ color, size, quantity: item.quantity });
+    });
+    return Array.from(productMap.values());
+  }, [selectedItems, products]);
+
+  const totalQuantity = useMemo(() => {
     let total = 0;
-    selected.forEach((i) => { total += i.quantity; });
+    selectedItems.forEach((item) => { total += item.quantity; });
     return total;
-  }, [selected]);
+  }, [selectedItems]);
 
   const handleSubmit = useCallback(async () => {
-    if (submitting || selected.size === 0) return;
+    if (submitting || selectedItems.size === 0) return;
     setSubmitting(true);
+    setSubmitSuccess(false);
     try {
-      await baleCreateOrder({
-        delivery_method: 'in_person',
-        items: Array.from(selected.values()).map((i) => ({ variant_id: i.variantId, quantity: i.quantity })),
-      });
-      setSuccess(true);
-      setSelected(new Map());
+      const items = Array.from(selectedItems.values()).map((item) => ({
+        product_id: item.productId,
+        color_id: item.colorId,
+        size_id: item.sizeId,
+        quantity: item.quantity,
+      }));
+      await baleCreateOrder({ delivery_method: deliveryMethod, items });
+      setSubmitSuccess(true);
+      setSelectedItems(new Map());
+      setDeliveryMethod('in_person');
       setTimeout(() => navigate('/'), 1500);
     } catch {
       setSubmitting(false);
     }
-  }, [submitting, selected, navigate]);
+  }, [submitting, selectedItems, deliveryMethod, navigate]);
 
   return (
     <div className="bale-shop">
-      <div className="bale-shop-search">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <BaleFilterBar
+        categories={categories}
+        sizes={sizes}
+        selectedCategory={selectedCategory}
+        selectedSize={selectedSize}
+        onSelectCategory={handleSelectCategory}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
+
+      <div className="bale-shop-guide">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
         </svg>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جستجو..." />
+        <span>ترتیب محصولات بر اساس سایز است: ابتدا بزرگ‌ترین سایز، سپس سایزهای کوچک‌تر قرار داده شده‌اند.</span>
       </div>
 
-      <div className="bale-shop-chips">
-        <button type="button" onClick={() => setSelectedCategory(null)} className={`bale-chip ${selectedCategory === null ? 'bale-chip-active' : ''}`}>همه</button>
-        {categories.map((c) => (
-          <button key={c.id} type="button" onClick={() => setSelectedCategory(c.id)} className={`bale-chip ${selectedCategory === c.id ? 'bale-chip-active' : ''}`}>{c.name}</button>
-        ))}
+      <div className="bale-shop-list">
+        {loading && (<><div className="bale-shop-skeleton" /><div className="bale-shop-skeleton" /><div className="bale-shop-skeleton" /></>)}
+        {!loading && products.length === 0 && (
+          <div className="bale-shop-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <p>محصولی یافت نشد</p>
+          </div>
+        )}
+        {!loading && (() => {
+          if (selectedSize) {
+            const filtered = products.filter((pwr) => pwr.sizes.some((s) => s.id === selectedSize));
+            return filtered.map((pwr) => {
+              const size = pwr.sizes.find((s) => s.id === selectedSize) ?? null;
+              return (
+                <BaleProductCard
+                  key={`${pwr.product.id}-${size?.id}`}
+                  productWithRelations={pwr}
+                  selectedSize={size}
+                  selectedItems={selectedItems}
+                  onToggleColor={toggleColor}
+                  onUpdateQuantity={updateQuantity}
+                />
+              );
+            });
+          }
+          const displayItems = buildDisplayItems(products);
+          return displayItems.map((item) => (
+            <BaleProductCard
+              key={`${item.pwr.product.id}-${item.displaySize?.id ?? 'none'}`}
+              productWithRelations={item.pwr}
+              selectedSize={item.displaySize}
+              selectedItems={selectedItems}
+              onToggleColor={toggleColor}
+              onUpdateQuantity={updateQuantity}
+            />
+          ));
+        })()}
       </div>
 
-      {loading && <div className="bale-shop-loading">در حال بارگذاری...</div>}
-      {!loading && products.length === 0 && (
-        <div className="bale-shop-empty">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <p>محصولی یافت نشد</p>
+      {submitSuccess && (
+        <div className="bale-shop-success-overlay">
+          <div className="bale-shop-success-card">
+            <div className="bale-shop-success-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <h3 className="bale-shop-success-title">سفارش با موفقیت ثبت شد!</h3>
+            <p className="bale-shop-success-text">در حال انتقال به صفحه اصلی...</p>
+          </div>
         </div>
       )}
 
-      <div className="bale-shop-list">
-        {products.map((p) => (
-          <div key={p.id} className="bale-product">
-            {p.images[0] && <img src={p.images[0]} alt={p.name} />}
-            <div className="bale-product-body">
-              <h3 className="bale-product-name">{p.name}</h3>
-              {p.price > 0 && <p className="bale-product-price">{p.price.toLocaleString('fa-IR')} تومان</p>}
-              {(variantsByProduct[p.id] ?? []).map((v) => (
-                <div key={v.id} className="bale-variant">
-                  <span>
-                    {(v.colors ?? []).map((c) => (
-                      <span key={c.id}>
-                        <span className="bale-variant-dot" style={{ backgroundColor: c.hex }} />
-                        {c.name}{' '}
-                      </span>
-                    ))}
-                    {(v.colors ?? []).length === 0 && `مدل ${v.id}`}
-                    {(v.sizes ?? []).length > 0 && ` — ${(v.sizes ?? []).map((s) => s.dimensions).join('، ')}`}
-                  </span>
-                  {selected.has(v.id) ? (
-                    <span className="bale-qty">
-                      <button type="button" className="bale-qty-btn" onClick={() => changeQty(v.id, 1)}>+</button>
-                      <span className="bale-qty-val">{selected.get(v.id)?.quantity}</span>
-                      <button type="button" className="bale-qty-btn" onClick={() => changeQty(v.id, -1)}>−</button>
-                    </span>
-                  ) : (
-                    <button type="button" className="bale-add-btn" onClick={() => toggleVariant(v.id)}>افزودن</button>
-                  )}
+      {orderSummary.length > 0 && !submitSuccess && (
+        <div className="bale-shop-order-summary">
+          <div className="bale-shop-order-header">
+            <h3 className="bale-shop-order-title">خلاصه سفارش</h3>
+            <span className="bale-shop-order-total">{totalQuantity} کالا</span>
+          </div>
+          {orderSummary.map((group) => (
+            <div key={group.product.id} className="bale-shop-order-group">
+              <div className="bale-shop-order-product-name">
+                {[group.category?.name, group.product.name].filter(Boolean).join(' ')}
+              </div>
+              {group.items.map((item, index) => (
+                <div key={index} className="bale-shop-order-item">
+                  <div className="bale-shop-order-item-left">
+                    <span className="bale-shop-order-item-dot" style={{ backgroundColor: item.color.hex }} />
+                    <span>{item.color.name}</span>
+                    <span className="bale-shop-order-item-size">سایز {item.size.dimensions}</span>
+                  </div>
+                  <span className="bale-shop-order-item-qty">×{item.quantity}</span>
                 </div>
               ))}
             </div>
+          ))}
+          <div className="bale-shop-delivery">
+            <div className="bale-shop-delivery-title">نحوه تحویل سفارش</div>
+            <div className="bale-shop-delivery-options">
+              {(Object.keys(BALE_DELIVERY_LABELS) as BaleDeliveryMethod[]).map((method) => (
+                <button
+                  type="button"
+                  key={method}
+                  className={`bale-shop-delivery-option ${deliveryMethod === method ? 'active' : ''}`}
+                  onClick={() => setDeliveryMethod(method)}
+                >
+                  {BALE_DELIVERY_LABELS[method]}
+                </button>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
-
-      {success && (
-        <div className="bale-shop-overlay">
-          <div className="bale-shop-success">سفارش با موفقیت ثبت شد!</div>
+          <button type="button" className="bale-shop-submit-btn" onClick={handleSubmit} disabled={submitting || selectedItems.size === 0}>
+            {submitting ? 'در حال ثبت...' : 'ثبت سفارش'}
+          </button>
         </div>
-      )}
-
-      {totalQty > 0 && !success && (
-        <button type="button" className="bale-submit" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? 'در حال ثبت...' : `ثبت سفارش (${totalQty} کالا)`}
-        </button>
       )}
     </div>
   );

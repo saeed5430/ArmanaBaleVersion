@@ -12,11 +12,21 @@ export interface BaleChat {
   type: string;
 }
 
+export interface BalePhotoSize {
+  file_id: string;
+}
+
+export interface BaleVoice {
+  file_id: string;
+}
+
 export interface BaleMessage {
   message_id: number;
   from?: BaleUser;
   chat: BaleChat;
   text?: string;
+  photo?: BalePhotoSize[];
+  voice?: BaleVoice;
 }
 
 export interface BaleUpdate {

@@ -1,15 +1,19 @@
 import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBaleAuth } from '../BaleAuthContext';
+import { isBaleAdmin, openAdminPanel } from '../bale-webapp';
+import { BaleHeader } from '../components/BaleHeader';
 import './BaleHomePage.css';
 
 export const BaleHomePage: FC = () => {
   const navigate = useNavigate();
   const { user } = useBaleAuth();
   const isProfileComplete = Boolean(user?.phone && user?.first_name && user?.last_name);
+  const showAdmin = isBaleAdmin(user?.username);
 
   return (
     <div className="bale-home">
+      <BaleHeader />
       <div className="bale-welcome">
         <div className="bale-shapes">
           <div className="bale-shape bale-shape-1" />
@@ -106,6 +110,24 @@ export const BaleHomePage: FC = () => {
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
+
+        {showAdmin && (
+          <button type="button" className="bale-card bale-card-admin" onClick={openAdminPanel}>
+            <span className="bale-icon bale-icon-admin">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </span>
+            <span className="bale-card-body">
+              <span className="bale-card-title">ورود به ادمین</span>
+              <p className="bale-card-desc">مدیریت فروشگاه</p>
+            </span>
+            <svg className="bale-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );

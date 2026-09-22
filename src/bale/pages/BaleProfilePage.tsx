@@ -100,6 +100,9 @@ export const BaleProfilePage: FC = () => {
 
   const baleInitUser = getBaleInitUser();
   const baleId = baleInitUser?.id ? String(baleInitUser.id) : user?.id ?? '—';
+  const avatar = user?.avatar_url || baleInitUser?.photo_url || null;
+  const displayFirst = user?.first_name || baleInitUser?.first_name || '';
+  const displayLast = user?.last_name || baleInitUser?.last_name || '';
   const needsAddress = user ? !user.address : false;
 
   return (
@@ -130,13 +133,13 @@ export const BaleProfilePage: FC = () => {
 
       <div className="bale-profile-header">
         <div className="bale-profile-avatar">
-          {user?.avatar_url ? (
-            <img src={user.avatar_url} alt={user.first_name} />
+          {avatar ? (
+            <img src={avatar} alt={`${displayFirst} ${displayLast}`.trim()} />
           ) : (
-            <div className="bale-profile-avatar-ph">{user?.first_name?.charAt(0) || 'ک'}</div>
+            <div className="bale-profile-avatar-ph">{displayFirst.charAt(0) || 'ک'}</div>
           )}
         </div>
-        <h2 className="bale-profile-name">{user?.first_name} {user?.last_name}</h2>
+        <h2 className="bale-profile-name">{displayFirst} {displayLast}</h2>
         {user?.username && <p className="bale-profile-username">@{user.username}</p>}
       </div>
 

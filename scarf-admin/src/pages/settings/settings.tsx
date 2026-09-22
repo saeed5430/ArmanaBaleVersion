@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, Form, Input, Button, message, Spin } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
 
-const API_URL = "https://armana-bale-worker.abdollahi003.workers.dev";
+const API_URL = "https://scarfminiappbale-api.abdollahi003.workers.dev";
 
 export const SettingsPage: React.FC = () => {
   const [form] = Form.useForm();

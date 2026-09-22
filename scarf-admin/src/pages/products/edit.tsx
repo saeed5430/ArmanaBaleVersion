@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { PlusOutlined } from "@ant-design/icons";
 import { MultiImageUploader, type ImageData } from "../../components/ImageUploader/multi";
 
-const API_URL = "https://armana-bale-worker.abdollahi003.workers.dev";
+const API_URL = "https://scarfminiappbale-api.abdollahi003.workers.dev";
 
 const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem("admin_token");

@@ -5,7 +5,7 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 // ImageKit upload is now handled via Bale admin API.
 // We keep this for backward compatibility but redirect to Bale admin endpoints.
 
-const BASE_URL = "https://armana-bale-worker.abdollahi003.workers.dev";
+const BASE_URL = "https://scarfminiappbale-api.abdollahi003.workers.dev";
 
 const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem("admin_token");

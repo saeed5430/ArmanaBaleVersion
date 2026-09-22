@@ -8,7 +8,7 @@ const { Title } = Typography;
 
 const paymentColors: Record<string, string> = { pending: "orange", paid: "green" };
 const paymentLabels: Record<string, string> = { pending: "پرداخت نشده", paid: "پرداخت شده" };
-const API_URL = "https://armana-bale-worker.abdollahi003.workers.dev";
+const API_URL = "https://scarfminiappbale-api.abdollahi003.workers.dev";
 
 interface OrderItemDetail {
   id: number;

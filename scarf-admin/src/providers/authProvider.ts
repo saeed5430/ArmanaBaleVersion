@@ -1,6 +1,6 @@
 import type { AuthProvider } from "@refinedev/core";
 
-const API_URL = "https://armana-bale-worker.abdollahi003.workers.dev";
+const API_URL = "https://scarfminiappbale-api.abdollahi003.workers.dev";
 
 export const authProvider: AuthProvider = {
   login: async ({ email, password }) => {

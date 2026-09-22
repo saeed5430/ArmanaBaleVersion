@@ -74,7 +74,7 @@ export const BaleProductCard: FC<BaleProductCardProps> = ({
       </div>
       <div className="bale-product-card-image-wrap">
         {firstImage ? (
-          <img src={firstImage} alt={displayName} className="bale-product-card-image" />
+          <img src={firstImage} alt={displayName} className="bale-product-card-image" loading="lazy" />
         ) : (
           <div className="bale-product-card-image-placeholder">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -82,6 +82,20 @@ export const BaleProductCard: FC<BaleProductCardProps> = ({
               <circle cx="8.5" cy="8.5" r="1.5" />
               <path d="M21 15l-5-5L5 21" />
             </svg>
+          </div>
+        )}
+        {firstImage && colors.length > 0 && (
+          <div className="bale-product-card-photo-tags">
+            {colors.slice(0, 6).map((color) => (
+              <button
+                key={color.id}
+                type="button"
+                className="bale-product-card-photo-tag"
+                onClick={() => selectedSize && handleColorSelect(color.id, selectedSize.id)}
+              >
+                {color.name}
+              </button>
+            ))}
           </div>
         )}
       </div>

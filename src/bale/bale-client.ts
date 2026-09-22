@@ -69,13 +69,27 @@ export interface BaleProduct {
   is_stock: number;
 }
 
+export interface BaleOrderItem {
+  variant_id: number;
+  quantity: number;
+  price: number;
+  product_name: string | null;
+  product_images: string[];
+  color_name: string | null;
+  color_hex: string | null;
+  size_dimensions: string | null;
+}
+
 export interface BaleOrder {
   id: number;
   payment_status: string;
   delivery_method: string | null;
   notes: string | null;
+  invoice_uploaded_at: number | null;
+  voice_uploaded_at: number | null;
+  receipt_uploaded_at: number | null;
   created_at: number;
-  items?: { variant_id: number; quantity: number; price: number; product_name: string | null; color_name: string | null; size_dimensions: string | null }[];
+  items?: BaleOrderItem[];
 }
 
 export async function baleLogin(initData: string): Promise<{ success: boolean; user_id?: string; session_token?: string; error?: string }> {

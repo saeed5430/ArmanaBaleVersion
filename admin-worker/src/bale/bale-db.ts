@@ -87,6 +87,8 @@ export interface BaleOrder {
   receipt_uploaded_at: number | null;
   invoice_file_id: string | null;
   invoice_uploaded_at: number | null;
+  voice_file_id: string | null;
+  voice_uploaded_at: number | null;
   created_at: number;
   updated_at: number;
 }

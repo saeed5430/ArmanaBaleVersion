@@ -87,6 +87,8 @@ export interface BaleOrder {
   receipt_uploaded_at: number | null;
   invoice_file_id: string | null;
   invoice_uploaded_at: number | null;
+  voice_file_id: string | null;
+  voice_uploaded_at: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -277,18 +279,20 @@ export class BaleDB {
     return results;
   }
 
-  async listOrderItems(orderId: number): Promise<(BaleOrderItem & { product_name: string | null; color_name: string | null; size_dimensions: string | null })[]> {
+  async listOrderItems(orderId: number): Promise<(BaleOrderItem & { product_name: string | null; product_images: string[]; color_name: string | null; color_hex: string | null; size_dimensions: string | null })[]> {
     const { results } = await this.db.prepare(
       `SELECT oi.*,
         p.name AS product_name,
+        p.images AS product_images,
         (SELECT c.name FROM colors c JOIN variant_colors vc ON vc.color_id = c.id WHERE vc.variant_id = oi.variant_id LIMIT 1) AS color_name,
+        (SELECT c.hex FROM colors c JOIN variant_colors vc ON vc.color_id = c.id WHERE vc.variant_id = oi.variant_id LIMIT 1) AS color_hex,
         (SELECT s.dimensions FROM sizes s JOIN variant_sizes vs ON vs.size_id = s.id WHERE vs.variant_id = oi.variant_id LIMIT 1) AS size_dimensions
        FROM order_items oi
        LEFT JOIN variants v ON v.id = oi.variant_id
        LEFT JOIN products p ON p.id = v.product_id
        WHERE oi.order_id = ?`
-    ).bind(orderId).all<BaleOrderItem & { product_name: string | null; color_name: string | null; size_dimensions: string | null }>();
-    return results;
+    ).bind(orderId).all<BaleOrderItem & { product_name: string | null; product_images: string | null; color_name: string | null; color_hex: string | null; size_dimensions: string | null }>();
+    return results.map((r) => ({ ...r, product_images: parseImages(r.product_images) }));
   }
 
   async getSetting(key: string): Promise<BaleSetting | null> {

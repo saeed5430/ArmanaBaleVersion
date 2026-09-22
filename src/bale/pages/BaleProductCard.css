@@ -66,6 +66,31 @@
   opacity: 0.3;
 }
 
+.bale-product-card-photo-tags {
+  position: absolute;
+  inset-inline: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bale-product-card-photo-tag {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.92);
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(4px);
+}
+
+.bale-product-card-photo-tag:active { transform: scale(0.95); }
+
 .bale-product-card-color-section { padding: 8px 10px 12px; }
 .bale-product-card-color-table-wrap { overflow-x: hidden; margin-bottom: 8px; }
 .bale-product-card-color-table-wrap:last-child { margin-bottom: 0; }

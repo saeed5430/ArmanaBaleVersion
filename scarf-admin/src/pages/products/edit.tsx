@@ -222,7 +222,7 @@ export const ProductEdit: React.FC = () => {
           <MultiImageUploader
             value={imageList}
             onChange={setImageList}
-            folder="products"
+            folder="/products-bale"
             maxCount={8}
           />
         </Card>

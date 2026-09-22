@@ -51,7 +51,7 @@ export const authProvider: AuthProvider = {
     const expires = localStorage.getItem("admin_token_expires");
 
     if (!token) {
-      return { authenticated: false, logout: true };
+      return { authenticated: false, logout: true, redirectTo: "/login" };
     }
 
     // Check if token is expired
@@ -59,10 +59,10 @@ export const authProvider: AuthProvider = {
       localStorage.removeItem("admin_token");
       localStorage.removeItem("admin_user");
       localStorage.removeItem("admin_token_expires");
-      return { authenticated: false, logout: true };
+      return { authenticated: false, logout: true, redirectTo: "/login" };
     }
 
-    // Verify token with server
+    // Verify token with server (fail closed: unreachable server = logged out)
     try {
       const response = await fetch(`${API_URL}/api/bale-admin-auth/verify`, {
         method: "POST",
@@ -71,14 +71,17 @@ export const authProvider: AuthProvider = {
       });
 
       const data = await response.json();
-      if (!data.valid) {
+      if (!response.ok || !data.valid) {
         localStorage.removeItem("admin_token");
         localStorage.removeItem("admin_user");
         localStorage.removeItem("admin_token_expires");
-        return { authenticated: false, logout: true };
+        return { authenticated: false, logout: true, redirectTo: "/login" };
       }
     } catch {
-      // If server is unreachable, allow based on local expiry
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_user");
+      localStorage.removeItem("admin_token_expires");
+      return { authenticated: false, logout: true, redirectTo: "/login" };
     }
 
     return { authenticated: true };

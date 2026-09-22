@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
-import { Refine, useAuthenticated } from "@refinedev/core";
+import { Authenticated, Refine } from "@refinedev/core";
 import { dataProvider } from "./dataProvider";
 import { authProvider } from "./providers/authProvider";
 import routerProvider, {
@@ -27,10 +27,13 @@ import { AdminList, AdminCreate, AdminEdit } from "./pages/admins";
 import { OrderList, OrderShow } from "./pages/orders";
 import { SettingsPage } from "./pages/settings";
 
-const Authenticated: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isLoading } = useAuthenticated();
-  if (isLoading) return null;
-  return <>{children}</>;
+const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <Authenticated key="admin-auth" redirectOnFail="/login">
+      <Outlet />
+      {children}
+    </Authenticated>
+  );
 };
 
 function App() {
@@ -67,11 +70,11 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route
                 element={
-                  <Authenticated>
+                  <RequireAuth>
                     <ThemedLayout>
                       <Outlet />
                     </ThemedLayout>
-                  </Authenticated>
+                  </RequireAuth>
                 }
               >
                 <Route index element={<NavigateToResource resource="categories" />} />

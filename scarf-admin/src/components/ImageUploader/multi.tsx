@@ -32,7 +32,7 @@ interface MultiImageUploaderProps {
 export const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({
   value = [],
   onChange,
-  folder = "uploads",
+  folder = "/products-bale",
   disabled = false,
   maxSize = 5 * 1024 * 1024, // 5MB
   maxCount = 8,

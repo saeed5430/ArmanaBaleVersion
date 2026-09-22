@@ -18,17 +18,14 @@ import "@refinedev/antd/dist/reset.css";
 import { LoginPage } from "./pages/login";
 import { CategoryList, CategoryCreate, CategoryEdit } from "./pages/categories";
 import { ProductList, ProductCreate, ProductEdit } from "./pages/products";
+import { VariantList, VariantCreate, VariantEdit } from "./pages/variants";
 import { ColorList, ColorCreate, ColorEdit } from "./pages/colors";
 import { SizeList, SizeCreate, SizeEdit } from "./pages/sizes";
 import { DesignList, DesignCreate, DesignEdit } from "./pages/designs";
 import { UserList } from "./pages/users";
-import { BaleUserList } from "./pages/bale-users";
-import { BaleChatsList } from "./pages/bale-chats";
-import { BalePage } from "./pages/bale";
 import { AdminList, AdminCreate, AdminEdit } from "./pages/admins";
 import { OrderList, OrderShow } from "./pages/orders";
 import { SettingsPage } from "./pages/settings";
-import { TelegramPage } from "./pages/telegram";
 
 const Authenticated: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isLoading } = useAuthenticated();
@@ -39,7 +36,7 @@ const Authenticated: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 function App() {
   return (
     <BrowserRouter>
-      <ConfigProvider theme={RefineThemes.Purple} locale={faIR} direction="rtl">
+      <ConfigProvider theme={RefineThemes.Green} locale={faIR} direction="rtl">
         <AntdApp>
           <Refine
             dataProvider={dataProvider}
@@ -49,16 +46,13 @@ function App() {
             resources={[
               { name: "categories", list: "/categories", create: "/categories/create", edit: "/categories/edit/:id", meta: { label: "دسته‌بندی‌ها" } },
               { name: "products", list: "/products", create: "/products/create", edit: "/products/edit/:id", meta: { label: "محصولات" } },
+              { name: "variants", list: "/variants", create: "/variants/create", edit: "/variants/edit/:id", meta: { label: "متغیرها" } },
               { name: "colors", list: "/colors", create: "/colors/create", edit: "/colors/edit/:id", meta: { label: "رنگ‌ها" } },
               { name: "sizes", list: "/sizes", create: "/sizes/create", edit: "/sizes/edit/:id", meta: { label: "سایزها" } },
               { name: "designs", list: "/designs", create: "/designs/create", edit: "/designs/edit/:id", meta: { label: "طرح‌ها" } },
-              { name: "users", list: "/users", meta: { label: "کاربران" } },
-              { name: "bale-customers", list: "/bale-users", meta: { label: "کاربران بله" } },
-              { name: "bale-chats", list: "/bale-chats", meta: { label: "مکالمات بله" } },
-              { name: "admins", list: "/admins", create: "/admins/create", edit: "/admins/edit/:id", meta: { label: "ادمین‌ها" } },
+              { name: "users", list: "/users", meta: { label: "کاربران بله" } },
               { name: "orders", list: "/orders", show: "/orders/show/:id", meta: { label: "سفارشات" } },
-              { name: "telegram", list: "/telegram", meta: { label: "ارسال شخصی تلگرام" } },
-              { name: "bale", list: "/bale", meta: { label: "ارسال شخصی بله" } },
+              { name: "admins", list: "/admins", create: "/admins/create", edit: "/admins/edit/:id", meta: { label: "ادمین‌ها" } },
               { name: "settings", list: "/settings", meta: { label: "تنظیمات" } },
             ]}
             options={{
@@ -83,16 +77,13 @@ function App() {
                 <Route index element={<NavigateToResource resource="categories" />} />
                 <Route path="/categories"><Route index element={<CategoryList />} /><Route path="create" element={<CategoryCreate />} /><Route path="edit/:id" element={<CategoryEdit />} /></Route>
                 <Route path="/products"><Route index element={<ProductList />} /><Route path="create" element={<ProductCreate />} /><Route path="edit/:id" element={<ProductEdit />} /></Route>
+                <Route path="/variants"><Route index element={<VariantList />} /><Route path="create" element={<VariantCreate />} /><Route path="edit/:id" element={<VariantEdit />} /></Route>
                 <Route path="/colors"><Route index element={<ColorList />} /><Route path="create" element={<ColorCreate />} /><Route path="edit/:id" element={<ColorEdit />} /></Route>
                 <Route path="/sizes"><Route index element={<SizeList />} /><Route path="create" element={<SizeCreate />} /><Route path="edit/:id" element={<SizeEdit />} /></Route>
                 <Route path="/designs"><Route index element={<DesignList />} /><Route path="create" element={<DesignCreate />} /><Route path="edit/:id" element={<DesignEdit />} /></Route>
                 <Route path="/users"><Route index element={<UserList />} /></Route>
-                <Route path="/bale-users"><Route index element={<BaleUserList />} /></Route>
-                <Route path="/bale-chats"><Route index element={<BaleChatsList />} /></Route>
                 <Route path="/admins"><Route index element={<AdminList />} /><Route path="create" element={<AdminCreate />} /><Route path="edit/:id" element={<AdminEdit />} /></Route>
                 <Route path="/orders"><Route index element={<OrderList />} /><Route path="show/:id" element={<OrderShow />} /></Route>
-                <Route path="/telegram"><Route index element={<TelegramPage />} /></Route>
-                <Route path="/bale"><Route index element={<BalePage />} /></Route>
                 <Route path="/settings"><Route index element={<SettingsPage />} /></Route>
               </Route>
               <Route path="*" element={<ErrorComponent />} />

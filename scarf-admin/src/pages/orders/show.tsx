@@ -8,7 +8,7 @@ const { Title } = Typography;
 
 const paymentColors: Record<string, string> = { pending: "orange", paid: "green" };
 const paymentLabels: Record<string, string> = { pending: "پرداخت نشده", paid: "پرداخت شده" };
-const API_URL = "https://scarf-mini-app.abdollahi003.workers.dev";
+const API_URL = "https://armana-bale-worker.abdollahi003.workers.dev";
 
 interface OrderItemDetail {
   id: number;
@@ -59,7 +59,7 @@ export const OrderShow: React.FC = () => {
 
   const fetchOrder = () => {
     if (!id) return Promise.resolve();
-    return fetch(`${API_URL}/api/admin/orders/${id}`, { headers: getHeaders() })
+    return fetch(`${API_URL}/api/bale-admin/orders/${id}`, { headers: getHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error("Request failed");
         return res.json();
@@ -81,7 +81,7 @@ export const OrderShow: React.FC = () => {
   const openReceipt = async (type: "invoice" | "voice") => {
     if (!order) return;
     try {
-      const response = await fetch(`${API_URL}/api/admin/orders/${order.id}/receipt?type=${type}`, { headers: getHeaders() });
+      const response = await fetch(`${API_URL}/api/bale-admin/orders/${order.id}/receipt?type=${type}`, { headers: getHeaders() });
       if (!response.ok) throw new Error("Request failed");
       const url = URL.createObjectURL(await response.blob());
       window.open(url, "_blank", "noopener,noreferrer");

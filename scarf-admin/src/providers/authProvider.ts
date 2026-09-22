@@ -1,11 +1,11 @@
 import type { AuthProvider } from "@refinedev/core";
 
-const API_URL = "https://scarf-mini-app.abdollahi003.workers.dev";
+const API_URL = "https://armana-bale-worker.abdollahi003.workers.dev";
 
 export const authProvider: AuthProvider = {
   login: async ({ email, password }) => {
     try {
-      const response = await fetch(`${API_URL}/api/admin-auth/login`, {
+      const response = await fetch(`${API_URL}/api/bale-admin-auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -64,7 +64,7 @@ export const authProvider: AuthProvider = {
 
     // Verify token with server
     try {
-      const response = await fetch(`${API_URL}/api/admin-auth/verify`, {
+      const response = await fetch(`${API_URL}/api/bale-admin-auth/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),

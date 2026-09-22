@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { PlusOutlined } from "@ant-design/icons";
 import { MultiImageUploader, type ImageData } from "../../components/ImageUploader/multi";
 
-const API_URL = "https://scarf-mini-app.abdollahi003.workers.dev";
+const API_URL = "https://armana-bale-worker.abdollahi003.workers.dev";
 
 const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem("admin_token");
@@ -82,7 +82,7 @@ export const ProductEdit: React.FC = () => {
     }
     setCreatingColor(true);
     try {
-      const response = await fetch(`${API_URL}/api/colors`, {
+      const response = await fetch(`${API_URL}/api/bale-admin/colors`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(newColor),
@@ -109,7 +109,7 @@ export const ProductEdit: React.FC = () => {
     }
     setCreatingSize(true);
     try {
-      const response = await fetch(`${API_URL}/api/sizes`, {
+      const response = await fetch(`${API_URL}/api/bale-admin/sizes`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(newSize),

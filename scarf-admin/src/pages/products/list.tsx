@@ -1,85 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useTable } from "@refinedev/antd";
-import { useDelete, useUpdate, useInvalidate } from "@refinedev/core";
+import { useDelete, useUpdate } from "@refinedev/core";
 import { CreateButton, List } from "@refinedev/antd";
 import { useNavigate } from "react-router-dom";
 import { ResponsiveTable } from "../../components/ResponsiveTable";
 import { ConfirmDeleteModal } from "../../components/ConfirmDeleteModal";
-import { message, Tag, Typography, Image, Button, Switch, Card, Space } from "antd";
+import { message, Tag, Typography, Image, Button, Switch, Card } from "antd";
 import { DeleteOutlined, UndoOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
-const API_URL = "https://scarf-mini-app.abdollahi003.workers.dev";
-
 export const ProductList: React.FC = () => {
-  const { tableProps } = useTable({ pagination: { pageSize: 1000 } });
+  const { tableProps } = useTable({ pagination: { pageSize: 50 } });
   const { mutate: remove } = useDelete();
   const { mutate: update } = useUpdate();
-  const invalidate = useInvalidate();
   const navigate = useNavigate();
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
-  const [savingOrder, setSavingOrder] = useState(false);
 
   const allProducts = (tableProps.dataSource || []) as any[];
   const activeProducts = allProducts.filter((p) => p.is_active);
   const deletedProducts = allProducts.filter((p) => !p.is_active);
-
-  // Local order for drag & drop (only active products). No API is called on drag.
-  const [displayProducts, setDisplayProducts] = useState<any[]>([]);
-  const [savedIds, setSavedIds] = useState<number[]>([]);
-
-  useEffect(() => {
-    const ids = activeProducts.map((p) => p.id);
-    // Only reset when the underlying set of products changed (avoid clobbering a pending drag).
-    setDisplayProducts((prev) => {
-      const prevIds = prev.map((p) => p.id);
-      const sameSet =
-        ids.length === prevIds.length && ids.every((id) => prevIds.includes(id));
-      return sameSet ? prev : activeProducts;
-    });
-    setSavedIds(ids);
-  }, [tableProps.dataSource]);
-
-  const currentIds = displayProducts.map((p) => p.id);
-  const hasOrderChanges =
-    JSON.stringify(currentIds) !== JSON.stringify(savedIds);
-
-  const handleReorder = (newList: any[]) => {
-    setDisplayProducts(newList);
-  };
-
-  const handleSaveOrder = async () => {
-    if (!hasOrderChanges) return;
-    setSavingOrder(true);
-    try {
-      const items = displayProducts.map((p, index) => ({
-        id: p.id,
-        sort_order: index,
-      }));
-
-      const token = localStorage.getItem("admin_token");
-      const res = await fetch(`${API_URL}/api/products/reorder`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ items }),
-      });
-
-      if (!res.ok) throw new Error("failed");
-
-      setSavedIds(displayProducts.map((p) => p.id));
-      message.success("ترتیب محصولات با موفقیت ذخیره شد");
-      invalidate({ resource: "products", invalidates: ["list"] });
-    } catch {
-      message.error("خطا در ذخیره ترتیب محصولات");
-    } finally {
-      setSavingOrder(false);
-    }
-  };
 
   const handleDelete = () => {
     if (!deleteTarget) return;
@@ -120,6 +61,19 @@ export const ProductList: React.FC = () => {
     );
   };
 
+  const parseImages = (images: unknown): string[] => {
+    if (Array.isArray(images)) return images.map(String);
+    if (typeof images === "string") {
+      try {
+        const parsed = JSON.parse(images);
+        return Array.isArray(parsed) ? parsed.map(String) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
   const columns = [
     {
       key: "index",
@@ -133,8 +87,9 @@ export const ProductList: React.FC = () => {
       title: "تصویر",
       dataIndex: "images",
       width: 60,
-      render: (images: string[]) => {
-        if (!images || images.length === 0) {
+      render: (images: unknown) => {
+        const list = parseImages(images);
+        if (list.length === 0) {
           return (
             <div style={{ width: 40, height: 40, borderRadius: 8, background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
               📷
@@ -142,7 +97,7 @@ export const ProductList: React.FC = () => {
           );
         }
         return (
-          <Image src={images[0]} width={40} height={40} style={{ borderRadius: 8, objectFit: "cover" }} preview={false} />
+          <Image src={list[0]} width={40} height={40} style={{ borderRadius: 8, objectFit: "cover" }} preview={false} />
         );
       },
     },
@@ -159,11 +114,18 @@ export const ProductList: React.FC = () => {
       render: (name: string) => <Tag>{name || "-"}</Tag>,
     },
     {
+      key: "price",
+      title: "قیمت",
+      dataIndex: "price",
+      width: 110,
+      render: (price: number) => <span>{Number(price || 0).toLocaleString("fa-IR")}</span>,
+    },
+    {
       key: "is_stock",
       title: "موجودی",
       dataIndex: "is_stock",
       width: 100,
-      render: (is_stock: boolean) => (
+      render: (is_stock: number) => (
         <Tag color={is_stock ? "green" : "red"}>
           {is_stock ? "موجود" : "ناموجود"}
         </Tag>
@@ -175,7 +137,7 @@ export const ProductList: React.FC = () => {
       dataIndex: "color_count",
       width: 80,
       render: (count: number) => (
-        <Tag color={count > 0 ? "blue" : "default"}>{count}</Tag>
+        <Tag color={Number(count) > 0 ? "blue" : "default"}>{count ?? 0}</Tag>
       ),
     },
     {
@@ -184,7 +146,7 @@ export const ProductList: React.FC = () => {
       dataIndex: "size_count",
       width: 80,
       render: (count: number) => (
-        <Tag color={count > 0 ? "purple" : "default"}>{count}</Tag>
+        <Tag color={Number(count) > 0 ? "purple" : "default"}>{count ?? 0}</Tag>
       ),
     },
     {
@@ -192,9 +154,9 @@ export const ProductList: React.FC = () => {
       title: "وضعیت",
       dataIndex: "is_active",
       width: 100,
-      render: (is_active: boolean, record: any) => (
+      render: (is_active: number, record: any) => (
         <Switch
-          checked={is_active}
+          checked={Boolean(is_active)}
           checkedChildren="فعال"
           unCheckedChildren="غیرفعال"
           onChange={(checked) => handleToggleActive(record, checked)}
@@ -209,30 +171,11 @@ export const ProductList: React.FC = () => {
 
   return (
     <div>
-      <List
-        headerProps={{
-          title: "محصولات",
-          extra: (
-            <Space>
-              <Button
-                type="primary"
-                disabled={!hasOrderChanges}
-                loading={savingOrder}
-                onClick={handleSaveOrder}
-              >
-                ذخیره ترتیب
-              </Button>
-              <CreateButton />
-            </Space>
-          ),
-        }}
-      >
+      <List headerProps={{ title: "محصولات", extra: <CreateButton /> }}>
         <ResponsiveTable
-          dataSource={displayProducts}
+          dataSource={activeProducts}
           loading={!!tableProps.loading}
           rowKey="id"
-          sortable
-          onReorder={handleReorder}
           mobileCardTitle={mobileCardTitle}
           mobileCardSubtitle={mobileCardSubtitle}
           columns={columns}

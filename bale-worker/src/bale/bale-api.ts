@@ -65,6 +65,49 @@ export async function sendBaleMessage(
   });
 }
 
+export async function sendBalePhoto(
+  token: string,
+  chatId: number | string,
+  photo: string,
+  caption?: string
+): Promise<Response> {
+  return balePost(token, 'sendPhoto', {
+    chat_id: chatId,
+    photo,
+    ...(caption ? { caption } : {}),
+  });
+}
+
+export async function sendBaleVoice(
+  token: string,
+  chatId: number | string,
+  voice: string,
+  caption?: string
+): Promise<Response> {
+  return balePost(token, 'sendVoice', {
+    chat_id: chatId,
+    voice,
+    ...(caption ? { caption } : {}),
+  });
+}
+
+export async function proxyBaleFile(token: string, fileId: string): Promise<Response> {
+  const fileResponse = await fetch(apiUrl(token, `getFile?file_id=${encodeURIComponent(fileId)}`));
+  const fileData = await fileResponse.json<{ ok?: boolean; result?: { file_path?: string } }>().catch(() => null);
+  if (!fileData?.ok || !fileData.result?.file_path) {
+    return new Response(JSON.stringify({ error: 'File unavailable' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+  }
+  const mediaResponse = await fetch(`https://tapi.bale.ai/file/bot${token}/${fileData.result.file_path}`);
+  if (!mediaResponse.ok || !mediaResponse.body) {
+    return new Response(JSON.stringify({ error: 'File unavailable' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+  }
+  return new Response(mediaResponse.body, {
+    headers: {
+      'Content-Type': mediaResponse.headers.get('Content-Type') || 'application/octet-stream',
+      'Cache-Control': 'private, max-age=300',
+    },
+  });
+}
 export async function answerBaleCallbackQuery(
   token: string,
   callbackQueryId: string,

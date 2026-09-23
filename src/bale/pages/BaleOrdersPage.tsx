@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FC } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { baleGetMyOrders, BALE_DELIVERY_LABELS, type BaleDeliveryMethod, type BaleOrder } from '../bale-client';
+import { baleGetMyOrders, baleGetOrderReceipt, BALE_DELIVERY_LABELS, type BaleDeliveryMethod, type BaleOrder } from '../bale-client';
+import { BaleTopBar } from '../components/BaleTopBar';
 import './BaleOrdersPage.css';
 
 const FA_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -33,10 +33,48 @@ function orderImage(order: BaleOrder): string | null {
 const BaleOrderDetail: FC<{ order: BaleOrder; onBack: () => void }> = ({ order, onBack }) => {
   const image = orderImage(order);
   const receiptTime = formatFaDateTime(order.invoice_uploaded_at ?? order.receipt_uploaded_at);
+  const voiceTime = formatFaDateTime(order.voice_uploaded_at);
   const totalQty = useMemo(
     () => (order.items ?? []).reduce((sum, it) => sum + (it.quantity || 0), 0),
     [order]
   );
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const urls: string[] = [];
+    if (order.invoice_uploaded_at || order.receipt_uploaded_at) {
+      setReceiptLoading(true);
+      baleGetOrderReceipt(order.id, 'invoice')
+        .then((blob) => {
+          if (cancelled) return;
+          const url = URL.createObjectURL(blob);
+          urls.push(url);
+          setReceiptUrl(url);
+        })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setReceiptLoading(false); });
+    }
+    if (order.voice_uploaded_at) {
+      setVoiceLoading(true);
+      baleGetOrderReceipt(order.id, 'voice')
+        .then((blob) => {
+          if (cancelled) return;
+          const url = URL.createObjectURL(blob);
+          urls.push(url);
+          setVoiceUrl(url);
+        })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setVoiceLoading(false); });
+    }
+    return () => {
+      cancelled = true;
+      urls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [order.id, order.invoice_uploaded_at, order.receipt_uploaded_at, order.voice_uploaded_at]);
 
   return (
     <div className="bale-order-detail">
@@ -78,6 +116,30 @@ const BaleOrderDetail: FC<{ order: BaleOrder; onBack: () => void }> = ({ order, 
         </div>
       )}
 
+      {receiptLoading && <div className="bale-order-media-loading">در حال دریافت فیش...</div>}
+      {receiptUrl && (
+        <div className="bale-order-image-wrap">
+          <img src={receiptUrl} alt="فیش سفارش" className="bale-order-image" loading="lazy" />
+        </div>
+      )}
+
+      {voiceTime && (
+        <div className="bale-order-receipt-box bale-order-receipt-box--voice">
+          پیام صوتی ثبت شده {voiceTime}
+        </div>
+      )}
+      {voiceLoading && <div className="bale-order-media-loading">در حال دریافت پیام صوتی...</div>}
+      {voiceUrl && (
+        <div className="bale-order-voice-wrap">
+          <audio src={voiceUrl} controls preload="metadata" className="bale-order-voice" />
+        </div>
+      )}
+
+      <div className="bale-order-pay-hint">
+        فیش پرداختی خود را به یکی از آیدی‌های ادمین ارسال کنید:
+        <span className="bale-order-pay-ids" dir="ltr">@saeed5430 • @fnazari57</span>
+      </div>
+
       {image && (
         <div className="bale-order-image-wrap">
           <img src={image} alt="تصویر محصول" className="bale-order-image" loading="lazy" />
@@ -92,7 +154,6 @@ const BaleOrderDetail: FC<{ order: BaleOrder; onBack: () => void }> = ({ order, 
 };
 
 export const BaleOrdersPage: FC = () => {
-  const navigate = useNavigate();
   const [orders, setOrders] = useState<BaleOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -106,6 +167,7 @@ export const BaleOrdersPage: FC = () => {
   if (selected) {
     return (
       <main className="bale-orders">
+        <BaleTopBar title={`سفارش #${toFa(selected.id)}`} backTo="/orders" />
         <BaleOrderDetail order={selected} onBack={() => setSelectedId(null)} />
       </main>
     );
@@ -113,10 +175,7 @@ export const BaleOrdersPage: FC = () => {
 
   return (
     <main className="bale-orders">
-      <div className="bale-orders-topbar">
-        <h1>سفارش‌های من</h1>
-        <button type="button" className="bale-orders-home-btn" onClick={() => navigate('/')}>بازگشت</button>
-      </div>
+      <BaleTopBar title="سفارش‌های من" />
       {loading && <p className="bale-orders-empty">در حال دریافت سفارش‌ها...</p>}
       {!loading && orders.length === 0 && <p className="bale-orders-empty">هنوز سفارشی ثبت نکرده‌اید.</p>}
       {!loading && orders.length > 0 && (

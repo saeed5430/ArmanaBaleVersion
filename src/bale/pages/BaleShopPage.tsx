@@ -16,6 +16,7 @@ import {
 } from '../bale-client';
 import { BaleFilterBar } from './BaleFilterBar';
 import { BaleProductCard } from './BaleProductCard';
+import { BaleTopBar } from '../components/BaleTopBar';
 import './BaleShopPage.css';
 
 export interface BaleProductWithRelations {
@@ -188,6 +189,7 @@ export const BaleShopPage: FC = () => {
 
   return (
     <div className="bale-shop">
+      <BaleTopBar title="سفارش آنلاین" />
       <BaleFilterBar
         categories={categories}
         sizes={sizes}

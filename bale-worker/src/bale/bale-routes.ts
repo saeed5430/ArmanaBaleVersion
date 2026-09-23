@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { BaleDB } from './bale-db';
 import { authenticateBaleUser, validateBaleSession } from './bale-auth';
+import { proxyBaleFile } from './bale-api';
 
 type Bindings = {
   BALE_DB: D1Database;
@@ -211,6 +212,21 @@ baleRoutes.get('/my-orders', async (c) => {
     orders.map(async (order) => ({ ...order, items: await bale.listOrderItems(order.id) }))
   );
   return c.json({ orders: enriched });
+});
+
+baleRoutes.get('/my-orders/:id/receipt', async (c) => {
+  const db = c.env.BALE_DB;
+  const botToken = c.env.BALE_ORDER_BOT_TOKEN;
+  if (!db || !botToken) return c.json({ error: 'Receipt service not configured' }, 500);
+  const userId = await requireBaleUser(c, c.env.JWT_SECRET ?? '');
+  if (!userId) return c.json({ error: 'Token required' }, 401);
+  const orderId = Number(c.req.param('id'));
+  const order = await new BaleDB(db).getOrderById(orderId);
+  if (!order || order.customer_id !== userId) return c.json({ error: 'Not found' }, 404);
+  const type = c.req.query('type') === 'voice' ? 'voice' : 'invoice';
+  const fileId = type === 'voice' ? order.voice_file_id : (order.invoice_file_id ?? order.receipt_file_id);
+  if (!fileId) return c.json({ error: 'File not uploaded' }, 404);
+  return proxyBaleFile(botToken, fileId);
 });
 
 baleRoutes.get('/settings', async (c) => {

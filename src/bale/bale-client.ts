@@ -147,3 +147,13 @@ export async function baleCreateOrder(data: { delivery_method?: string; notes?: 
 export async function baleGetMyOrders(): Promise<{ orders: BaleOrder[] }> {
   return baleRequest('/api/bale/my-orders');
 }
+
+export async function baleGetOrderReceipt(orderId: number, type: 'invoice' | 'voice'): Promise<Blob> {
+  const token = localStorage.getItem('bale_session_token');
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const base = import.meta.env.VITE_API_URL || '';
+  const response = await fetch(`${base}/api/bale/my-orders/${orderId}/receipt?type=${type}`, { headers });
+  if (!response.ok) throw new Error('Receipt unavailable');
+  return response.blob();
+}

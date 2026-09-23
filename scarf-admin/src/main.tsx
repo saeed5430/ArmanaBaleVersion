@@ -30,7 +30,6 @@ import { SettingsPage } from "./pages/settings";
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <Authenticated key="admin-auth" redirectOnFail="/login">
-      <Outlet />
       {children}
     </Authenticated>
   );

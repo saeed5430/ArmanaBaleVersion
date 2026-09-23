@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBaleAuth } from '../BaleAuthContext';
 import { baleUpdateProfile } from '../bale-client';
 import { getBaleInitUser } from '../bale-webapp';
+import { BaleTopBar } from '../components/BaleTopBar';
 import './BaleProfilePage.css';
 
 type FormField = 'first_name' | 'last_name' | 'phone' | 'postal_code' | 'address';
@@ -107,6 +108,7 @@ export const BaleProfilePage: FC = () => {
 
   return (
     <div className="bale-profile">
+      <BaleTopBar title="مشخصات مشتری" />
       {success && (
         <div className="bale-profile-overlay">
           <div className="bale-profile-success">
@@ -123,13 +125,6 @@ export const BaleProfilePage: FC = () => {
       )}
 
       {errorMessage && <div className="bale-profile-toast" role="alert">{errorMessage}</div>}
-
-      <button className="bale-profile-back" onClick={() => navigate('/')}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-        بازگشت
-      </button>
 
       <div className="bale-profile-header">
         <div className="bale-profile-avatar">

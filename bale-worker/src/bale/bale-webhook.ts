@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { sendBaleMessage, answerBaleCallbackQuery, buildBaleMiniAppButton, type BaleUpdate } from './bale-api';
+import { sendBaleMessage, sendBalePhoto, sendBaleVoice, answerBaleCallbackQuery, buildBaleMiniAppButton, type BaleUpdate } from './bale-api';
 
 type Bindings = {
   BALE_DB: D1Database;
@@ -42,7 +42,7 @@ async function handleCallback(token: string, adminIds: string[], db: D1Database,
   await sendBaleMessage(token, callback.from.id, prompt);
 }
 
-async function handleMedia(token: string, db: D1Database, update: BaleUpdate): Promise<boolean> {
+async function handleMedia(mainToken: string, notifyToken: string, db: D1Database, update: BaleUpdate): Promise<boolean> {
   const message = update.message;
   if (!message || message.text) return false;
   const photos = message.photo;
@@ -51,43 +51,73 @@ async function handleMedia(token: string, db: D1Database, update: BaleUpdate): P
   const adminId = String(message.from?.id ?? message.chat.id);
   const waiting = await db.prepare('SELECT order_id, waiting_action FROM bale_order_waiting WHERE admin_id = ?').bind(adminId).first<{ order_id: number; waiting_action: string }>();
   if (!waiting) {
-    await sendBaleMessage(token, message.chat.id, 'ابتدا روی دکمه «ارسال فاکتور» یا «ارسال صدا» در پیام سفارش بزنید.');
+    await sendBaleMessage(notifyToken, message.chat.id, 'ابتدا روی دکمه «ارسال فاکتور» یا «ارسال صدا» در پیام سفارش بزنید.');
     return true;
   }
+  const orderRow = await db.prepare('SELECT id, customer_id FROM orders WHERE id = ?').bind(waiting.order_id).first<{ id: number; customer_id: string }>();
+  const customerChatId = orderRow?.customer_id ? Number(orderRow.customer_id) : NaN;
   if (waiting.waiting_action === 'invoice_photo' && photos && photos.length > 0) {
     const fileId = photos[photos.length - 1].file_id;
     await db.prepare('UPDATE orders SET invoice_file_id = ?, invoice_uploaded_at = unixepoch(), updated_at = unixepoch() WHERE id = ?').bind(fileId, waiting.order_id).run();
     await db.prepare('DELETE FROM bale_order_waiting WHERE admin_id = ?').bind(adminId).run();
-    await sendBaleMessage(token, message.chat.id, `✅ فاکتور سفارش #${waiting.order_id} ثبت شد.`);
+    await sendBaleMessage(notifyToken, message.chat.id, `✅ فاکتور سفارش #${waiting.order_id} ثبت شد.`);
+    if (orderRow && Number.isFinite(customerChatId)) {
+      await sendBalePhoto(mainToken, customerChatId, fileId, `🧾 فاکتور سفارش #${waiting.order_id} ثبت شد.`);
+      await sendBaleMessage(
+        mainToken,
+        customerChatId,
+        [
+          `سفارش #${waiting.order_id} شما تأیید شد.`,
+          '',
+          'لطفاً فیش پرداختی خود را به یکی از آیدی‌های ادمین ارسال کنید:',
+          '👤 @saeed5430',
+          '👤 @fnazari57',
+        ].join('\n')
+      );
+    }
     return true;
   }
   if (waiting.waiting_action === 'voice' && voice) {
     await db.prepare('UPDATE orders SET voice_file_id = ?, voice_uploaded_at = unixepoch(), updated_at = unixepoch() WHERE id = ?').bind(voice.file_id, waiting.order_id).run();
     await db.prepare('DELETE FROM bale_order_waiting WHERE admin_id = ?').bind(adminId).run();
-    await sendBaleMessage(token, message.chat.id, `✅ فایل صوتی سفارش #${waiting.order_id} ثبت شد.`);
+    await sendBaleMessage(notifyToken, message.chat.id, `✅ فایل صوتی سفارش #${waiting.order_id} ثبت شد.`);
+    if (orderRow && Number.isFinite(customerChatId)) {
+      await sendBaleVoice(mainToken, customerChatId, voice.file_id, `🎤 پیام صوتی سفارش #${waiting.order_id}`);
+      await sendBaleMessage(
+        mainToken,
+        customerChatId,
+        [
+          `سفارش #${waiting.order_id} شما تأیید شد.`,
+          '',
+          'لطفاً فیش پرداختی خود را به یکی از آیدی‌های ادمین ارسال کنید:',
+          '👤 @saeed5430',
+          '👤 @fnazari57',
+        ].join('\n')
+      );
+    }
     return true;
   }
-  await sendBaleMessage(token, message.chat.id, 'نوع فایل با درخواست مطابقت ندارد. لطفاً دوباره تلاش کنید.');
+  await sendBaleMessage(notifyToken, message.chat.id, 'نوع فایل با درخواست مطابقت ندارد. لطفاً دوباره تلاش کنید.');
   return true;
 }
 
-async function handleUpdate(token: string, adminIds: string[], miniAppUrl: string, db: D1Database | undefined, update: BaleUpdate): Promise<void> {
+async function handleUpdate(mainToken: string, notifyToken: string, adminIds: string[], miniAppUrl: string, db: D1Database | undefined, update: BaleUpdate): Promise<void> {
   if (update.callback_query) {
     if (!db) return;
-    await handleCallback(token, adminIds, db, update);
+    await handleCallback(notifyToken, adminIds, db, update);
     return;
   }
   const message = update.message;
   if (!message) return;
-  if (db && await handleMedia(token, db, update)) return;
+  if (db && await handleMedia(mainToken, notifyToken, db, update)) return;
   if (!message.text) return;
   const chatId = message.chat.id;
   const firstName = message.from?.first_name ?? 'دوست عزیز';
   const text = message.text.trim();
   if (text === '/start' || text === '/help') {
-    await sendBaleMessage(token, chatId, startText(firstName), buildBaleMiniAppButton(miniAppUrl));
+    await sendBaleMessage(notifyToken, chatId, startText(firstName), buildBaleMiniAppButton(miniAppUrl));
   } else {
-    await sendBaleMessage(token, chatId, 'دستور نامعتبر. از /start یا /help استفاده کن.');
+    await sendBaleMessage(notifyToken, chatId, 'دستور نامعتبر. از /start یا /help استفاده کن.');
   }
 }
 
@@ -100,14 +130,14 @@ export const baleWebhookRoutes = new Hono<{ Bindings: Bindings }>();
 baleWebhookRoutes.post('/webhook', async (c) => {
   if (!c.env.BALE_BOT_TOKEN) return c.json({ error: 'BALE_BOT_TOKEN not set' }, 500);
   const miniAppUrl = c.env.MINI_APP_URL || c.env.BASE_URL;
-  await handleUpdate(c.env.BALE_BOT_TOKEN, adminIds(c.env), miniAppUrl, c.env.BALE_DB, await c.req.json<BaleUpdate>());
+  await handleUpdate(c.env.BALE_BOT_TOKEN, c.env.BALE_ORDER_BOT_TOKEN || c.env.BALE_BOT_TOKEN, adminIds(c.env), miniAppUrl, c.env.BALE_DB, await c.req.json<BaleUpdate>());
   return c.json({ ok: true });
 });
 
 baleWebhookRoutes.post('/order-webhook', async (c) => {
   if (!c.env.BALE_ORDER_BOT_TOKEN) return c.json({ error: 'BALE_ORDER_BOT_TOKEN not set' }, 500);
   const miniAppUrl = c.env.MINI_APP_URL || c.env.BASE_URL;
-  await handleUpdate(c.env.BALE_ORDER_BOT_TOKEN, adminIds(c.env), miniAppUrl, c.env.BALE_DB, await c.req.json<BaleUpdate>());
+  await handleUpdate(c.env.BALE_BOT_TOKEN || c.env.BALE_ORDER_BOT_TOKEN, c.env.BALE_ORDER_BOT_TOKEN, adminIds(c.env), miniAppUrl, c.env.BALE_DB, await c.req.json<BaleUpdate>());
   return c.json({ ok: true });
 });
 

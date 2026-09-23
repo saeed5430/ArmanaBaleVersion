@@ -3,6 +3,7 @@ import { BaleDB } from './bale-db';
 import { BaleAdminDB } from './bale-admin-db';
 import { requireBaleAdmin } from './bale-admin-auth';
 import { hashBalePassword } from './bale-password';
+import { proxyBaleFile } from './bale-api';
 
 type Bindings = {
   BALE_DB: D1Database;
@@ -309,17 +310,7 @@ baleAdminRoutes.get('/orders/:id/receipt', async (c) => {
   const type = c.req.query('type') === 'voice' ? 'voice' : 'invoice';
   const fileId = await new BaleAdminDB(db).getOrderReceiptFileId(Number(c.req.param('id')), type);
   if (!fileId) return c.json({ error: 'File not uploaded' }, 404);
-  const fileResponse = await fetch(`https://tapi.bale.ai/bot${botToken}/getFile?file_id=${encodeURIComponent(fileId)}`);
-  const fileData = await fileResponse.json<{ ok?: boolean; result?: { file_path?: string } }>().catch(() => null);
-  if (!fileData?.ok || !fileData.result?.file_path) return c.json({ error: 'File unavailable' }, 404);
-  const mediaResponse = await fetch(`https://tapi.bale.ai/file/bot${botToken}/${fileData.result.file_path}`);
-  if (!mediaResponse.ok || !mediaResponse.body) return c.json({ error: 'File unavailable' }, 404);
-  return new Response(mediaResponse.body, {
-    headers: {
-      'Content-Type': mediaResponse.headers.get('Content-Type') || 'image/jpeg',
-      'Cache-Control': 'private, max-age=300',
-    },
-  });
+  return proxyBaleFile(botToken, fileId);
 });
 
 baleAdminRoutes.get('/admins', async (c) => {

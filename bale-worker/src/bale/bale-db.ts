@@ -279,6 +279,10 @@ export class BaleDB {
     return results;
   }
 
+  async getOrderById(orderId: number): Promise<BaleOrder | null> {
+    return await this.db.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first<BaleOrder>();
+  }
+
   async listOrderItems(orderId: number): Promise<(BaleOrderItem & { product_name: string | null; product_images: string[]; color_name: string | null; color_hex: string | null; size_dimensions: string | null })[]> {
     const { results } = await this.db.prepare(
       `SELECT oi.*,

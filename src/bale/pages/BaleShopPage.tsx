@@ -52,24 +52,36 @@ function buildDisplayItems(products: BaleProductWithRelations[]): BaleDisplayIte
       if (v > maxVal) maxVal = v;
     }
   }
-  const result: BaleDisplayItem[] = [];
+
+  const group1: BaleDisplayItem[] = [];
+  const group2: BaleDisplayItem[] = [];
+  const group1Products: BaleProductWithRelations[] = [];
+
   for (const pwr of products) {
     const big = pwr.sizes.find((s) => sizeValue(s) === maxVal);
-    if (big) result.push({ pwr, displaySize: big });
-    else result.push({ pwr, displaySize: pwr.sizes[0] ?? null });
-  }
-  const otherVals = Array.from(new Set(products.flatMap((pwr) => pwr.sizes.map((s) => sizeValue(s)))))
-    .filter((v) => v !== maxVal)
-    .sort((a, b) => b - a);
-  for (const v of otherVals) {
-    for (const pwr of products) {
-      const big = pwr.sizes.find((s) => sizeValue(s) === maxVal);
-      if (!big) continue;
-      const match = pwr.sizes.find((s) => sizeValue(s) === v);
-      if (match) result.push({ pwr, displaySize: match });
+    if (big) {
+      group1.push({ pwr, displaySize: big });
+      group1Products.push(pwr);
+    } else {
+      group2.push({ pwr, displaySize: pwr.sizes[0] ?? null });
     }
   }
-  return result;
+
+  const otherVals = Array.from(
+    new Set(group1Products.flatMap((pwr) => pwr.sizes.map((s) => sizeValue(s))))
+  )
+    .filter((v) => v !== maxVal)
+    .sort((a, b) => b - a);
+
+  const group3: BaleDisplayItem[] = [];
+  for (const v of otherVals) {
+    for (const pwr of group1Products) {
+      const match = pwr.sizes.find((s) => sizeValue(s) === v);
+      if (match) group3.push({ pwr, displaySize: match });
+    }
+  }
+
+  return [...group1, ...group2, ...group3];
 }
 
 export const BaleShopPage: FC = () => {

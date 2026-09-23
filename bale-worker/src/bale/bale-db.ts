@@ -171,11 +171,11 @@ export class BaleDB {
   }
 
   async listProducts(categoryId?: number, search?: string): Promise<BaleProduct[]> {
-    let query = 'SELECT * FROM products WHERE is_active = 1';
+    let query = 'SELECT p.* FROM products p WHERE p.is_active = 1';
     const values: unknown[] = [];
-    if (categoryId) { query += ' AND category_id = ?'; values.push(categoryId); }
-    if (search) { query += ' AND (name LIKE ? OR description LIKE ?)'; values.push(`%${search}%`, `%${search}%`); }
-    query += ' ORDER BY id DESC';
+    if (categoryId) { query += ' AND p.category_id = ?'; values.push(categoryId); }
+    if (search) { query += ' AND (p.name LIKE ? OR p.description LIKE ?)'; values.push(`%${search}%`, `%${search}%`); }
+    query += ` ORDER BY COALESCE((SELECT MIN(v.sort_order) FROM variants v WHERE v.product_id = p.id), 2147483647) ASC, p.id ASC`;
     const { results } = await this.db.prepare(query).bind(...values).all<Record<string, unknown>>();
     return results.map((r) => ({ ...(r as unknown as BaleProduct), images: parseImages(r['images']) }));
   }

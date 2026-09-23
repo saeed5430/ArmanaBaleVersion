@@ -5,7 +5,8 @@ import { CreateButton, List } from "@refinedev/antd";
 import { useNavigate } from "react-router-dom";
 import { ResponsiveTable } from "../../components/ResponsiveTable";
 import { ConfirmDeleteModal } from "../../components/ConfirmDeleteModal";
-import { message, Tag, Typography } from "antd";
+import { message, Button, Tag, Typography } from "antd";
+import { SaveOutlined, UndoOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
@@ -19,6 +20,8 @@ export const VariantList: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
   const [localOrder, setLocalOrder] = useState<any[] | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const rows: any[] = localOrder ?? [...(tableProps.dataSource ?? [])];
 
@@ -44,7 +47,19 @@ export const VariantList: React.FC = () => {
 
   const handleReorder = (newOrder: any[]) => {
     setLocalOrder(newOrder);
-    const orderedIds = newOrder.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+    setDirty(true);
+  };
+
+  const handleReset = () => {
+    setLocalOrder(null);
+    setDirty(false);
+    message.info("تغییرات لغو شد");
+  };
+
+  const handleApply = () => {
+    if (!localOrder || saving) return;
+    setSaving(true);
+    const orderedIds = localOrder.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
     reorder(
       {
         url: `${API_URL}/api/bale-admin/variants/reorder`,
@@ -52,10 +67,15 @@ export const VariantList: React.FC = () => {
         values: { ordered_ids: orderedIds },
       },
       {
-        onSuccess: () => message.success("ترتیب نمایش ذخیره شد"),
+        onSuccess: () => {
+          message.success("ترتیب نمایش اعمال شد");
+          setDirty(false);
+          setLocalOrder(null);
+          setSaving(false);
+        },
         onError: () => {
           message.error("خطا در ذخیره ترتیب");
-          setLocalOrder(null);
+          setSaving(false);
         },
       }
     );
@@ -115,9 +135,31 @@ export const VariantList: React.FC = () => {
 
   return (
     <div>
-      <List headerProps={{ title: "متغیرها", extra: <CreateButton /> }}>
-        <div style={{ marginBottom: 12, padding: "10px 14px", background: "#F5F0FF", border: "1px solid #DDD0FA", borderRadius: 12, fontSize: 13, color: "#5B21B6", lineHeight: 1.8 }}>
-          ردیف‌ها را با درگ بکشید تا ترتیب نمایش در مینی‌اپ (QuickBuy) مشخص شود: اول سایز بزرگ‌تر، بعد تک‌سایزها، بعد سایز کوچک‌تر — ترتیب داخل هر گروه از همین لیست می‌آید.
+      <List headerProps={{ title: "متغیرها", extra: (
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            icon={<UndoOutlined />}
+            onClick={handleReset}
+            disabled={!dirty || saving}
+          >
+            بازگردانی
+          </Button>
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            onClick={handleApply}
+            loading={saving}
+            disabled={!dirty}
+          >
+            اعمال تغییرات
+          </Button>
+          <CreateButton />
+        </div>
+      ) }}>
+        <div style={{ marginBottom: 12, padding: "10px 14px", background: dirty ? "#FFF7E6" : "#F5F0FF", border: dirty ? "1px solid #FFD591" : "1px solid #DDD0FA", borderRadius: 12, fontSize: 13, color: dirty ? "#874D00" : "#5B21B6", lineHeight: 1.8 }}>
+          {dirty
+            ? "تغییرات ذخیره نشده‌اند — برای اعمال روی دکمه «اعمال تغییرات» بزنید."
+            : "ردیف‌ها را با درگ بکشید، بعد «اعمال تغییرات» را بزنید تا ترتیب نمایش در مینی‌اپ (QuickBuy) عوض شود: اول سایز بزرگ‌تر، بعد تک‌سایزها، بعد سایز کوچک‌تر — ترتیب داخل هر گروه از همین لیست می‌آید."}
         </div>
         <ResponsiveTable
           dataSource={rows}

@@ -9,8 +9,10 @@ export const BaleHeader: FC = () => {
   const avatar = user?.avatar_url || initUser?.photo_url || null;
   const firstName = user?.first_name || initUser?.first_name || '';
   const lastName = user?.last_name || initUser?.last_name || '';
-  const fullName = `${firstName} ${lastName}`.trim();
-  const initial = firstName.charAt(0) || 'ک';
+  const username = user?.username || initUser?.username || '';
+  const displayName = lastName || firstName || (username ? `@${username}` : 'کاربر');
+  const fullName = `${firstName} ${lastName}`.trim() || displayName;
+  const initial = (lastName || firstName).charAt(0) || 'ک';
 
   return (
     <header className="bale-header">
@@ -22,7 +24,7 @@ export const BaleHeader: FC = () => {
         )}
       </div>
       <div className="bale-header-text">
-        <span className="bale-header-hello">سلام {fullName || 'دوست عزیز'}!</span>
+        <span className="bale-header-hello">سلام {displayName}!</span>
         <span className="bale-header-sub">به فروشگاه آرمانا خوش آمدید</span>
       </div>
     </header>

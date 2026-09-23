@@ -171,11 +171,12 @@ export class BaleDB {
   }
 
   async listProducts(categoryId?: number, search?: string): Promise<BaleProduct[]> {
-    let query = 'SELECT p.* FROM products p WHERE p.is_active = 1';
+    let query = `SELECT p.* FROM products p WHERE p.is_active = 1
+      AND EXISTS (SELECT 1 FROM variants v WHERE v.product_id = p.id AND v.is_active = 1)`;
     const values: unknown[] = [];
     if (categoryId) { query += ' AND p.category_id = ?'; values.push(categoryId); }
     if (search) { query += ' AND (p.name LIKE ? OR p.description LIKE ?)'; values.push(`%${search}%`, `%${search}%`); }
-    query += ` ORDER BY COALESCE((SELECT MIN(v.sort_order) FROM variants v WHERE v.product_id = p.id), 2147483647) ASC, p.id ASC`;
+    query += ` ORDER BY COALESCE((SELECT MIN(v.sort_order) FROM variants v WHERE v.product_id = p.id AND v.is_active = 1), 2147483647) ASC, p.id ASC`;
     const { results } = await this.db.prepare(query).bind(...values).all<Record<string, unknown>>();
     return results.map((r) => ({ ...(r as unknown as BaleProduct), images: parseImages(r['images']) }));
   }
@@ -211,7 +212,7 @@ export class BaleDB {
   }
 
   async listProductVariants(productId: number): Promise<BaleVariant[]> {
-    const { results } = await this.db.prepare('SELECT * FROM variants WHERE product_id = ? AND is_stock = 1').bind(productId).all<BaleVariant>();
+    const { results } = await this.db.prepare('SELECT * FROM variants WHERE product_id = ? AND is_stock = 1 AND is_active = 1 ORDER BY sort_order ASC, id ASC').bind(productId).all<BaleVariant>();
     return results;
   }
 

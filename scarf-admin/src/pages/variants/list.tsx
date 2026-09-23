@@ -31,14 +31,19 @@ export const VariantList: React.FC = () => {
     remove(
       { resource: "variants", id: deleteTarget.id },
       {
-        onSuccess: () => {
-          message.success("متغیر با موفقیت حذف شد");
+        onSuccess: (res: any) => {
+          const mode = res?.data?.mode;
+          message.success(
+            mode === "soft"
+              ? "محصول نمایشی از لیست حذف شد (در سفارش‌های قبلی حفظ شد)"
+              : "محصول نمایشی با موفقیت حذف شد"
+          );
           setDeleteTarget(null);
           setDeleting(false);
           setLocalOrder(null);
         },
-        onError: () => {
-          message.error("خطا در حذف متغیر");
+        onError: (err: any) => {
+          message.error(err?.message || "خطا در حذف محصول نمایشی");
           setDeleting(false);
         },
       }
@@ -135,7 +140,7 @@ export const VariantList: React.FC = () => {
 
   return (
     <div>
-      <List headerProps={{ title: "متغیرها", extra: (
+      <List headerProps={{ title: "محصولات نمایشی", extra: (
         <div style={{ display: "flex", gap: 8 }}>
           <Button
             icon={<UndoOutlined />}
@@ -179,7 +184,7 @@ export const VariantList: React.FC = () => {
 
       <ConfirmDeleteModal
         open={!!deleteTarget}
-        title="آیا از حذف این متغیر مطمئن هستید؟"
+        title={`آیا از حذف «${deleteTarget?.product_name || "این محصول نمایشی"}» مطمئن هستید؟`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}

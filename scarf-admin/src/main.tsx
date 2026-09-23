@@ -50,7 +50,7 @@ function App() {
             resources={[
               { name: "categories", list: "/categories", create: "/categories/create", edit: "/categories/edit/:id", meta: { label: "دسته‌بندی‌ها" } },
               { name: "products", list: "/products", create: "/products/create", edit: "/products/edit/:id", meta: { label: "محصولات" } },
-              { name: "variants", list: "/variants", create: "/variants/create", edit: "/variants/edit/:id", meta: { label: "متغیرها" } },
+              { name: "variants", list: "/variants", create: "/variants/create", edit: "/variants/edit/:id", meta: { label: "محصولات نمایشی" } },
               { name: "colors", list: "/colors", create: "/colors/create", edit: "/colors/edit/:id", meta: { label: "رنگ‌ها" } },
               { name: "sizes", list: "/sizes", create: "/sizes/create", edit: "/sizes/edit/:id", meta: { label: "سایزها" } },
               { name: "designs", list: "/designs", create: "/designs/create", edit: "/designs/edit/:id", meta: { label: "طرح‌ها" } },

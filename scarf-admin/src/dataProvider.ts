@@ -152,9 +152,9 @@ export const dataProvider: DataProvider = {
     const config = resourceMap[resource];
     if (!config) throw new Error(`Unknown resource: ${resource}`);
 
-    await fetchJson(`${API_URL}${config.path}/${id}`, { method: "DELETE" });
+    const data = await fetchJson(`${API_URL}${config.path}/${id}`, { method: "DELETE" });
 
-    return { data: { id } } as never;
+    return { data: { id, ...(typeof data === "object" && data !== null ? data : {}) } } as never;
   },
 
   getApiUrl: () => API_URL,

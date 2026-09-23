@@ -261,9 +261,13 @@ baleAdminRoutes.put('/variants/:id', async (c) => {
 baleAdminRoutes.delete('/variants/:id', async (c) => {
   const db = c.env.BALE_DB;
   if (!db) return c.json({ error: 'Database not configured' }, 500);
-  const deleted = await new BaleAdminDB(db).deleteVariant(Number(c.req.param('id')));
-  if (!deleted) return c.json({ error: 'Not found' }, 404);
-  return c.json({ deleted: true });
+  try {
+    const result = await new BaleAdminDB(db).deleteVariant(Number(c.req.param('id')));
+    if (!result) return c.json({ error: 'Not found' }, 404);
+    return c.json({ deleted: true, mode: result.mode });
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : 'Delete failed' }, 400);
+  }
 });
 
 baleAdminRoutes.get('/users', async (c) => {

@@ -171,11 +171,12 @@ export class BaleDB {
   }
 
   async listProducts(categoryId?: number, search?: string): Promise<BaleProduct[]> {
-    let query = 'SELECT p.* FROM products p WHERE p.is_active = 1';
+    let query = `SELECT p.* FROM products p WHERE p.is_active = 1
+      AND EXISTS (SELECT 1 FROM variants v WHERE v.product_id = p.id AND v.is_active = 1)`;
     const values: unknown[] = [];
     if (categoryId) { query += ' AND p.category_id = ?'; values.push(categoryId); }
     if (search) { query += ' AND (p.name LIKE ? OR p.description LIKE ?)'; values.push(`%${search}%`, `%${search}%`); }
-    query += ` ORDER BY COALESCE((SELECT MIN(v.sort_order) FROM variants v WHERE v.product_id = p.id), 2147483647) ASC, p.id ASC`;
+    query += ` ORDER BY COALESCE((SELECT MIN(v.sort_order) FROM variants v WHERE v.product_id = p.id AND v.is_active = 1), 2147483647) ASC, p.id ASC`;
     const { results } = await this.db.prepare(query).bind(...values).all<Record<string, unknown>>();
     return results.map((r) => ({ ...(r as unknown as BaleProduct), images: parseImages(r['images']) }));
   }
@@ -211,7 +212,7 @@ export class BaleDB {
   }
 
   async listProductVariants(productId: number): Promise<BaleVariant[]> {
-    const { results } = await this.db.prepare('SELECT * FROM variants WHERE product_id = ? AND is_stock = 1').bind(productId).all<BaleVariant>();
+    const { results } = await this.db.prepare('SELECT * FROM variants WHERE product_id = ? AND is_stock = 1 AND is_active = 1 ORDER BY sort_order ASC, id ASC').bind(productId).all<BaleVariant>();
     return results;
   }
 
@@ -225,7 +226,7 @@ export class BaleDB {
       `SELECT DISTINCT c.* FROM colors c
        JOIN variant_colors vc ON vc.color_id = c.id
        JOIN variants v ON v.id = vc.variant_id
-       WHERE v.product_id = ? ORDER BY c.name ASC`
+       WHERE v.product_id = ? AND v.is_active = 1 ORDER BY c.name ASC`
     ).bind(productId).all<BaleColor>();
     return results;
   }
@@ -235,14 +236,14 @@ export class BaleDB {
       `SELECT DISTINCT s.* FROM sizes s
        JOIN variant_sizes vs ON vs.size_id = s.id
        JOIN variants v ON v.id = vs.variant_id
-       WHERE v.product_id = ? ORDER BY s.dimensions ASC`
+       WHERE v.product_id = ? AND v.is_active = 1 ORDER BY s.dimensions ASC`
     ).bind(productId).all<BaleSize>();
     return results;
   }
 
   async resolveVariantId(productId: number, colorId?: number | null, sizeId?: number | null): Promise<number | null> {
     const { results } = await this.db.prepare(
-      'SELECT id FROM variants WHERE product_id = ? AND is_stock = 1 ORDER BY id ASC'
+      'SELECT id FROM variants WHERE product_id = ? AND is_stock = 1 AND is_active = 1 ORDER BY sort_order ASC, id ASC'
     ).bind(productId).all<{ id: number }>();
     if (results.length === 0) return null;
     if (colorId == null && sizeId == null) return results[0].id;

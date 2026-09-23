@@ -130,8 +130,8 @@ export class BaleAdminDB {
   async listProductsAdmin(): Promise<Record<string, unknown>[]> {
     const { results } = await this.db.prepare(
       `SELECT p.*, c.name AS category_name,
-        (SELECT COUNT(DISTINCT vc.color_id) FROM variants v LEFT JOIN variant_colors vc ON vc.variant_id = v.id WHERE v.product_id = p.id) AS color_count,
-        (SELECT COUNT(DISTINCT vsz.size_id) FROM variants v LEFT JOIN variant_sizes vsz ON vsz.variant_id = v.id WHERE v.product_id = p.id) AS size_count
+        (SELECT COUNT(DISTINCT vc.color_id) FROM variants v LEFT JOIN variant_colors vc ON vc.variant_id = v.id WHERE v.product_id = p.id AND v.is_active = 1) AS color_count,
+        (SELECT COUNT(DISTINCT vsz.size_id) FROM variants v LEFT JOIN variant_sizes vsz ON vsz.variant_id = v.id WHERE v.product_id = p.id AND v.is_active = 1) AS size_count
        FROM products p LEFT JOIN categories c ON c.id = p.category_id ORDER BY p.id DESC`
     ).all<Record<string, unknown>>();
     return results.map((r) => ({ ...r, images: parseImages(r['images']) }));
@@ -302,9 +302,10 @@ export class BaleAdminDB {
 
   async listVariantsAdmin(productId?: number): Promise<Record<string, unknown>[]> {
     let query = `SELECT v.*, p.name AS product_name, d.name AS design_name FROM variants v
-      LEFT JOIN products p ON p.id = v.product_id LEFT JOIN designs d ON d.id = v.design_id`;
+      LEFT JOIN products p ON p.id = v.product_id LEFT JOIN designs d ON d.id = v.design_id
+      WHERE v.is_active = 1`;
     const values: unknown[] = [];
-    if (productId) { query += ' WHERE v.product_id = ?'; values.push(productId); }
+    if (productId) { query += ' AND v.product_id = ?'; values.push(productId); }
     query += ' ORDER BY v.sort_order ASC, v.id ASC';
     const { results } = await this.db.prepare(query).bind(...values).all<Record<string, unknown>>();
     const enriched = await Promise.all(results.map(async (v) => {
@@ -389,9 +390,19 @@ export class BaleAdminDB {
     return this.getVariantAdmin(id);
   }
 
-  async deleteVariant(id: number): Promise<boolean> {
-    const result = await this.db.prepare('DELETE FROM variants WHERE id = ?').bind(id).run();
-    return (result.meta.changes ?? 0) > 0;
+  async deleteVariant(id: number): Promise<{ mode: 'hard' | 'soft' } | null> {
+    const refs = await this.db.prepare('SELECT COUNT(*) AS c FROM order_items WHERE variant_id = ?').bind(id).first<{ c: number }>();
+    if ((refs?.c ?? 0) > 0) {
+      const result = await this.db.prepare('UPDATE variants SET is_active = 0, updated_at = unixepoch() WHERE id = ?').bind(id).run();
+      return (result.meta.changes ?? 0) > 0 ? { mode: 'soft' } : null;
+    }
+    await this.db.batch([
+      this.db.prepare('DELETE FROM variant_colors WHERE variant_id = ?').bind(id),
+      this.db.prepare('DELETE FROM variant_sizes WHERE variant_id = ?').bind(id),
+      this.db.prepare('DELETE FROM variants WHERE id = ?').bind(id),
+    ]);
+    const check = await this.db.prepare('SELECT id FROM variants WHERE id = ?').bind(id).first<{ id: number }>();
+    return check ? null : { mode: 'hard' };
   }
 
   async reorderVariants(orderedIds: number[]): Promise<void> {

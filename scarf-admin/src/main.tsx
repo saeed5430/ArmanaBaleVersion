@@ -27,10 +27,12 @@ import { AdminList, AdminCreate, AdminEdit } from "./pages/admins";
 import { OrderList, OrderShow } from "./pages/orders";
 import { SettingsPage } from "./pages/settings";
 
-const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const RequireAuth: React.FC = () => {
   return (
     <Authenticated key="admin-auth" redirectOnFail="/login">
-      {children}
+      <ThemedLayout>
+        <Outlet />
+      </ThemedLayout>
     </Authenticated>
   );
 };
@@ -67,15 +69,7 @@ function App() {
           >
             <Routes>
               <Route path="/login" element={<LoginPage />} />
-              <Route
-                element={
-                  <RequireAuth>
-                    <ThemedLayout>
-                      <Outlet />
-                    </ThemedLayout>
-                  </RequireAuth>
-                }
-              >
+              <Route element={<RequireAuth />}>
                 <Route index element={<NavigateToResource resource="categories" />} />
                 <Route path="/categories"><Route index element={<CategoryList />} /><Route path="create" element={<CategoryCreate />} /><Route path="edit/:id" element={<CategoryEdit />} /></Route>
                 <Route path="/products"><Route index element={<ProductList />} /><Route path="create" element={<ProductCreate />} /><Route path="edit/:id" element={<ProductEdit />} /></Route>

@@ -101,23 +101,32 @@ async function handleMedia(mainToken: string, notifyToken: string, db: D1Databas
   return true;
 }
 
-async function handleUpdate(mainToken: string, notifyToken: string, adminIds: string[], miniAppUrl: string, db: D1Database | undefined, update: BaleUpdate): Promise<void> {
-  if (update.callback_query) {
-    if (!db) return;
-    await handleCallback(notifyToken, adminIds, db, update);
-    return;
-  }
+function adminOnlyText(): string {
+  return ['این ربات مخصوص ادمین‌های فروشگاه آرماناست.', '', 'برای مشاهده فروشگاه، از ربات اصلی استفاده کنید.'].join('\n');
+}
+
+async function handleMainBotText(token: string, miniAppUrl: string, update: BaleUpdate): Promise<void> {
   const message = update.message;
-  if (!message) return;
-  if (db && await handleMedia(mainToken, notifyToken, db, update)) return;
-  if (!message.text) return;
+  if (!message?.text) return;
   const chatId = message.chat.id;
   const firstName = message.from?.first_name ?? 'دوست عزیز';
   const text = message.text.trim();
   if (text === '/start' || text === '/help') {
-    await sendBaleMessage(notifyToken, chatId, startText(firstName), buildBaleMiniAppButton(miniAppUrl));
+    await sendBaleMessage(token, chatId, startText(firstName), buildBaleMiniAppButton(miniAppUrl));
   } else {
-    await sendBaleMessage(notifyToken, chatId, 'دستور نامعتبر. از /start یا /help استفاده کن.');
+    await sendBaleMessage(token, chatId, 'دستور نامعتبر. از /start یا /help استفاده کن.');
+  }
+}
+
+async function handleNotifyBotText(token: string, adminIds: string[], update: BaleUpdate): Promise<void> {
+  const message = update.message;
+  if (!message?.text) return;
+  const chatId = message.chat.id;
+  const senderId = String(message.from?.id ?? chatId);
+  if (!adminIds.includes(senderId)) return;
+  const text = message.text.trim();
+  if (text === '/start' || text === '/help') {
+    await sendBaleMessage(token, chatId, adminOnlyText());
   }
 }
 
@@ -130,14 +139,22 @@ export const baleWebhookRoutes = new Hono<{ Bindings: Bindings }>();
 baleWebhookRoutes.post('/webhook', async (c) => {
   if (!c.env.BALE_BOT_TOKEN) return c.json({ error: 'BALE_BOT_TOKEN not set' }, 500);
   const miniAppUrl = c.env.MINI_APP_URL || c.env.BASE_URL;
-  await handleUpdate(c.env.BALE_BOT_TOKEN, c.env.BALE_ORDER_BOT_TOKEN || c.env.BALE_BOT_TOKEN, adminIds(c.env), miniAppUrl, c.env.BALE_DB, await c.req.json<BaleUpdate>());
+  await handleMainBotText(c.env.BALE_BOT_TOKEN, miniAppUrl, await c.req.json<BaleUpdate>());
   return c.json({ ok: true });
 });
 
 baleWebhookRoutes.post('/order-webhook', async (c) => {
   if (!c.env.BALE_ORDER_BOT_TOKEN) return c.json({ error: 'BALE_ORDER_BOT_TOKEN not set' }, 500);
-  const miniAppUrl = c.env.MINI_APP_URL || c.env.BASE_URL;
-  await handleUpdate(c.env.BALE_BOT_TOKEN || c.env.BALE_ORDER_BOT_TOKEN, c.env.BALE_ORDER_BOT_TOKEN, adminIds(c.env), miniAppUrl, c.env.BALE_DB, await c.req.json<BaleUpdate>());
+  const update = await c.req.json<BaleUpdate>();
+  const notifyToken = c.env.BALE_ORDER_BOT_TOKEN;
+  const mainToken = c.env.BALE_BOT_TOKEN || notifyToken;
+  const ids = adminIds(c.env);
+  if (update.callback_query) {
+    if (c.env.BALE_DB) await handleCallback(notifyToken, ids, c.env.BALE_DB, update);
+    return c.json({ ok: true });
+  }
+  if (c.env.BALE_DB && await handleMedia(mainToken, notifyToken, c.env.BALE_DB, update)) return c.json({ ok: true });
+  await handleNotifyBotText(notifyToken, ids, update);
   return c.json({ ok: true });
 });
 

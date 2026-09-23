@@ -221,6 +221,16 @@ baleAdminRoutes.get('/variants', async (c) => {
   return c.json({ items, total: items.length });
 });
 
+baleAdminRoutes.put('/variants/reorder', async (c) => {
+  const db = c.env.BALE_DB;
+  if (!db) return c.json({ error: 'Database not configured' }, 500);
+  const body = await c.req.json<{ ordered_ids?: unknown }>().catch(() => null);
+  const ids = Array.isArray(body?.ordered_ids) ? body.ordered_ids.map(Number).filter((n) => Number.isFinite(n)) : [];
+  if (ids.length === 0) return c.json({ error: 'ordered_ids is required' }, 400);
+  await new BaleAdminDB(db).reorderVariants(ids);
+  return c.json({ reordered: true, count: ids.length });
+});
+
 baleAdminRoutes.get('/variants/:id', async (c) => {
   const db = c.env.BALE_DB;
   if (!db) return c.json({ error: 'Database not configured' }, 500);

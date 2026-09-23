@@ -305,7 +305,7 @@ export class BaleAdminDB {
       LEFT JOIN products p ON p.id = v.product_id LEFT JOIN designs d ON d.id = v.design_id`;
     const values: unknown[] = [];
     if (productId) { query += ' WHERE v.product_id = ?'; values.push(productId); }
-    query += ' ORDER BY v.id DESC';
+    query += ' ORDER BY v.sort_order ASC, v.id ASC';
     const { results } = await this.db.prepare(query).bind(...values).all<Record<string, unknown>>();
     const enriched = await Promise.all(results.map(async (v) => {
       const vid = Number(v['id']);
@@ -348,8 +348,9 @@ export class BaleAdminDB {
   }
 
   async createVariant(input: { product_id: number; design_id?: number | null; slug?: string | null; is_stock?: number; color_ids?: number[]; size_ids?: number[] }): Promise<Record<string, unknown> | null> {
-    const result = await this.db.prepare('INSERT INTO variants (product_id, design_id, slug, is_stock) VALUES (?, ?, ?, ?)').bind(
-      input.product_id, input.design_id ?? null, input.slug ?? null, input.is_stock ?? 1
+    const maxRow = await this.db.prepare('SELECT COALESCE(MAX(sort_order), 0) AS m FROM variants').first<{ m: number }>();
+    const result = await this.db.prepare('INSERT INTO variants (product_id, design_id, slug, is_stock, sort_order) VALUES (?, ?, ?, ?, ?)').bind(
+      input.product_id, input.design_id ?? null, input.slug ?? null, input.is_stock ?? 1, (maxRow?.m ?? 0) + 1
     ).run();
     const variantId = Number(result.meta.last_row_id);
     for (const cid of input.color_ids ?? []) {
@@ -391,6 +392,13 @@ export class BaleAdminDB {
   async deleteVariant(id: number): Promise<boolean> {
     const result = await this.db.prepare('DELETE FROM variants WHERE id = ?').bind(id).run();
     return (result.meta.changes ?? 0) > 0;
+  }
+
+  async reorderVariants(orderedIds: number[]): Promise<void> {
+    const batch = orderedIds.map((id, index) =>
+      this.db.prepare('UPDATE variants SET sort_order = ?, updated_at = unixepoch() WHERE id = ?').bind(index + 1, id)
+    );
+    await this.db.batch(batch);
   }
 
   async listUsersAdmin(limit = 50, offset = 0, search?: string): Promise<{ users: Record<string, unknown>[]; total: number }> {

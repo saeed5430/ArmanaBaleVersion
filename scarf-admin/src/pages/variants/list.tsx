@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTable } from "@refinedev/antd";
-import { useDelete } from "@refinedev/core";
+import { useDelete, useCustomMutation } from "@refinedev/core";
 import { CreateButton, List } from "@refinedev/antd";
 import { useNavigate } from "react-router-dom";
 import { ResponsiveTable } from "../../components/ResponsiveTable";
@@ -9,12 +9,18 @@ import { message, Tag, Typography } from "antd";
 
 const { Text } = Typography;
 
+const API_URL = "https://scarfminiappbale-api.abdollahi003.workers.dev";
+
 export const VariantList: React.FC = () => {
   const { tableProps } = useTable({ pagination: { pageSize: 50 } });
   const { mutate: remove } = useDelete();
+  const { mutate: reorder } = useCustomMutation();
   const navigate = useNavigate();
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const [localOrder, setLocalOrder] = useState<any[] | null>(null);
+
+  const rows: any[] = localOrder ?? [...(tableProps.dataSource ?? [])];
 
   const handleDelete = () => {
     if (!deleteTarget) return;
@@ -26,10 +32,30 @@ export const VariantList: React.FC = () => {
           message.success("متغیر با موفقیت حذف شد");
           setDeleteTarget(null);
           setDeleting(false);
+          setLocalOrder(null);
         },
         onError: () => {
           message.error("خطا در حذف متغیر");
           setDeleting(false);
+        },
+      }
+    );
+  };
+
+  const handleReorder = (newOrder: any[]) => {
+    setLocalOrder(newOrder);
+    const orderedIds = newOrder.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+    reorder(
+      {
+        url: `${API_URL}/api/bale-admin/variants/reorder`,
+        method: "put",
+        values: { ordered_ids: orderedIds },
+      },
+      {
+        onSuccess: () => message.success("ترتیب نمایش ذخیره شد"),
+        onError: () => {
+          message.error("خطا در ذخیره ترتیب");
+          setLocalOrder(null);
         },
       }
     );
@@ -90,13 +116,18 @@ export const VariantList: React.FC = () => {
   return (
     <div>
       <List headerProps={{ title: "متغیرها", extra: <CreateButton /> }}>
+        <div style={{ marginBottom: 12, padding: "10px 14px", background: "#F5F0FF", border: "1px solid #DDD0FA", borderRadius: 12, fontSize: 13, color: "#5B21B6", lineHeight: 1.8 }}>
+          ردیف‌ها را با درگ بکشید تا ترتیب نمایش در مینی‌اپ (QuickBuy) مشخص شود: اول سایز بزرگ‌تر، بعد تک‌سایزها، بعد سایز کوچک‌تر — ترتیب داخل هر گروه از همین لیست می‌آید.
+        </div>
         <ResponsiveTable
-          dataSource={tableProps.dataSource || []}
+          dataSource={rows}
           loading={!!tableProps.loading}
           rowKey="id"
           mobileCardTitle={(record: any) => record.product_name || `محصول #${record.product_id}`}
           mobileCardSubtitle={(record: any) => record.design_name || "-"}
           columns={columns}
+          sortable
+          onReorder={handleReorder}
           actions={{
             onEdit: (record) => navigate(`/variants/edit/${record.id}`),
             onDelete: (record) => setDeleteTarget(record),
